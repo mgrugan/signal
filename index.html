@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Signal — SEO &amp; GEO Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FBFAF7;
+    --ink:#171714;
+    --slate:#6B6B63;
+    --hair:#DAD7CE;
+    --seo:#283891;      /* classic search — indigo */
+    --geo:#6D3BD1;      /* generative engines — violet */
+    --good:#2F6B4F;
+    --warn:#9A5B1E;
+    --bad:#9A2A2A;
+    --serif:"Instrument Serif",Georgia,serif;
+    --sans:"Inter Tight",system-ui,sans-serif;
+    --mono:"Space Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--paper);color:var(--ink);font-family:var(--sans);
+    line-height:1.5;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px;margin:0 auto;padding:0 28px}
+  a{color:inherit}
+
+  /* ---- masthead ---- */
+  .masthead{padding:46px 0 26px;border-bottom:1.5px solid var(--ink)}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--slate)}
+  .title{font-family:var(--serif);font-size:62px;line-height:.95;margin:10px 0 6px;letter-spacing:-.01em}
+  .title em{font-style:italic;color:var(--seo)}
+  .sub{font-size:15px;color:var(--slate);max-width:54ch}
+
+  /* ---- input ---- */
+  .panel{padding:26px 0 8px}
+  .field{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+  .field input{
+    flex:1;min-width:240px;font-family:var(--mono);font-size:14px;
+    padding:14px 16px;border:1.5px solid var(--ink);background:#fff;color:var(--ink);
+    border-radius:0;outline:none;
+  }
+  .field input:focus{box-shadow:0 0 0 3px rgba(40,56,145,.18)}
+  .field button{
+    font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:.04em;
+    padding:0 26px;border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);
+    cursor:pointer;text-transform:uppercase;border-radius:0;
+  }
+  .field button:hover{background:var(--seo);border-color:var(--seo)}
+  .field button:disabled{opacity:.45;cursor:wait}
+  .hint{font-size:12.5px;color:var(--slate);margin-top:10px;font-family:var(--mono)}
+  .hint a{color:var(--seo)} .hint code{background:#fff;border:1px solid var(--hair);padding:0 4px}
+  .keyrow{display:flex;gap:10px;align-items:center;margin-top:10px}
+  .keyrow input[type=password],.keyrow input[type=text]{
+    flex:1;min-width:220px;font-family:var(--mono);font-size:13px;
+    padding:11px 14px;border:1px solid var(--hair);background:#fff;color:var(--ink);outline:none;border-radius:0;
+  }
+  .keyrow input:focus{border-color:var(--geo);box-shadow:0 0 0 3px rgba(109,59,209,.14)}
+  .keyrow .show{font-family:var(--mono);font-size:12px;color:var(--slate);display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap}
+
+  /* ---- status ---- */
+  #status{margin:30px 0;font-family:var(--mono);font-size:13px;color:var(--slate);min-height:18px}
+  #status .dot{display:inline-block;width:7px;height:7px;background:var(--seo);border-radius:50%;margin-right:9px;animation:pulse 1s infinite ease-in-out}
+  @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+  .err{border:1.5px solid var(--bad);padding:16px 18px;color:var(--bad);font-family:var(--mono);font-size:13px;margin:24px 0}
+
+  /* ---- report ---- */
+  #report{display:none}
+  .rpt-head{padding:34px 0 24px;border-bottom:1px solid var(--hair)}
+  .rpt-url{font-family:var(--mono);font-size:13px;color:var(--seo);word-break:break-all}
+  .rpt-name{font-family:var(--serif);font-size:40px;line-height:1.02;margin:8px 0 4px}
+  .rpt-meta{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--slate);text-transform:uppercase}
+
+  .scores{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1.5px solid var(--ink);margin:26px 0 6px}
+  .score{padding:22px 24px}
+  .score:first-child{border-right:1.5px solid var(--ink)}
+  .score .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--slate)}
+  .score .num{font-family:var(--serif);font-size:64px;line-height:1;margin:4px 0 2px}
+  .score.s .num{color:var(--seo)} .score.g .num{color:var(--geo)}
+  .score .num small{font-family:var(--mono);font-size:16px;color:var(--slate);font-weight:700}
+  .score .one{font-size:13.5px;color:var(--ink);max-width:34ch}
+
+  .section{padding:30px 0;border-bottom:1px solid var(--hair)}
+  .section h2{font-family:var(--serif);font-size:30px;margin:0 0 4px;letter-spacing:-.01em}
+  .section .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--slate);margin-bottom:16px}
+  .kicker.g{color:var(--geo)} .kicker.s{color:var(--seo)}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--hair);border:1px solid var(--hair)}
+  .cell{background:var(--paper);padding:13px 15px}
+  .cell .ck{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--slate)}
+  .cell .cv{font-size:15px;margin-top:3px;word-break:break-word}
+  .cell .cv.mono{font-family:var(--mono);font-size:13px}
+  .flag{font-family:var(--mono);font-size:10px;font-weight:700;padding:1px 6px;border:1px solid currentColor;display:inline-block;vertical-align:middle}
+  .ok{color:var(--good)} .miss{color:var(--bad)} .meh{color:var(--warn)}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .chip{font-family:var(--mono);font-size:12px;border:1px solid var(--ink);padding:5px 11px;background:#fff}
+
+  .queries{list-style:none;padding:0;margin:0}
+  .queries li{font-family:var(--mono);font-size:14px;padding:11px 0;border-bottom:1px dashed var(--hair);display:flex;gap:12px}
+  .queries li:last-child{border-bottom:0}
+  .queries .q-i{color:var(--geo);font-weight:700;flex:none}
+
+  .sim{border:1px solid var(--hair);border-left:3px solid var(--geo);padding:18px 20px;margin-bottom:16px;background:#fff}
+  .sim .sq{font-family:var(--mono);font-size:13px;color:var(--geo);margin-bottom:9px}
+  .sim .sq::before{content:"ask ▸ ";color:var(--slate)}
+  .sim .sa{font-size:15px;line-height:1.55;color:var(--ink)}
+  .sim .cite{margin-top:12px;font-family:var(--mono);font-size:12px;display:flex;gap:9px;align-items:baseline}
+  .sim .cite b{font-weight:700}
+
+  .actions{list-style:none;padding:0;margin:0}
+  .actions li{display:flex;gap:13px;padding:13px 0;border-bottom:1px solid var(--hair);align-items:baseline}
+  .actions li:last-child{border-bottom:0}
+  .pri{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;flex:none;border:1px solid currentColor;margin-top:1px}
+  .pri.high{color:var(--bad)} .pri.med{color:var(--warn)} .pri.low{color:var(--slate)}
+  .actions .at{font-size:15px;font-weight:500}
+  .actions .aw{font-size:13px;color:var(--slate);margin-top:2px}
+  .col-head{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;margin:0 0 8px;padding-bottom:8px;border-bottom:1.5px solid var(--ink)}
+  .col-head.s{color:var(--seo)} .col-head.g{color:var(--geo)}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:34px}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:26px 0 60px;flex-wrap:wrap}
+  .toolbar .note{font-family:var(--mono);font-size:11px;color:var(--slate);max-width:46ch}
+  .btn-ghost{font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase;
+    padding:12px 22px;border:1.5px solid var(--ink);background:#fff;color:var(--ink);cursor:pointer}
+  .btn-ghost:hover{background:var(--ink);color:var(--paper)}
+
+  @media (max-width:640px){
+    .title{font-size:46px}.rpt-name{font-size:30px}
+    .scores,.grid2,.twocol{grid-template-columns:1fr}
+    .score:first-child{border-right:0;border-bottom:1.5px solid var(--ink)}
+  }
+
+  /* ---- print → PDF ---- */
+  @media print{
+    @page{margin:16mm}
+    body{background:#fff}
+    .masthead,.panel,#status,.toolbar{display:none !important}
+    #report{display:block !important}
+    .wrap{max-width:none;padding:0}
+    .section,.sim{break-inside:avoid}
+    .rpt-head{border-color:#000}
+    a{color:#000}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">SEO + Generative Engine Optimization · audit</div>
+    <h1 class="title">Signal<em>.</em></h1>
+    <p class="sub">Paste a URL. It reads the page's real search signals, asks an AI answer engine the questions your audience would, and returns one no-fluff action plan for both classic search and AI answers.</p>
+  </header>
+
+  <section class="panel">
+    <div class="field">
+      <input id="url" type="url" placeholder="https://example.com" autocomplete="off" spellcheck="false" />
+      <button id="run">Run audit</button>
+    </div>
+    <div class="keyrow">
+      <input id="gkey" type="password" placeholder="Gemini API key — stored in your browser only" autocomplete="off" spellcheck="false" />
+      <label class="show"><input id="gshow" type="checkbox" /> show</label>
+    </div>
+    <div class="hint">Reads title, meta, headings, keywords, structured data &amp; links → scores SEO &amp; GEO → drafts actions. Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> (starts with <code>AIza</code>). The key never leaves your browser.</div>
+  </section>
+
+  <div id="status"></div>
+
+  <main id="report"></main>
+
+</div>
+
+<script>
+/* ============================================================
+   CONFIG — AI answer engine
+   ------------------------------------------------------------
+   The "what does the AI say" analysis uses Google's Gemini API,
+   which is the one major provider that allows direct browser calls
+   (so this runs on GitHub Pages with NO backend).
+
+   The key is NEVER stored in this file. You paste it into the field
+   on the page; it's kept only in your browser (localStorage) and sent
+   straight to Google. Do not commit a key to your repo.
+
+   If no key is present, it falls back to the in-Claude.ai API so the
+   preview still works.
+   ============================================================ */
+const GEMINI_MODEL = "gemini-2.5-flash";
+const KEY_STORE = "signal_gemini_key";
+
+function getKey(){ try{ return (localStorage.getItem(KEY_STORE)||"").trim(); }catch(e){ return (window.__k||"").trim(); } }
+function setKey(v){ try{ localStorage.setItem(KEY_STORE, v); }catch(e){ window.__k = v; } }
+
+/* Readers that add the cross-origin header for us — no backend of your own.
+   Tested June 2026: Jina Reader is reliable and returns RAW HTML when asked
+   (so meta tags & JSON-LD survive). codetabs often works from a real browser
+   origin. corsproxy.io now blocks free use; allorigins is frequently down. */
+const FETCHERS = [
+  { name:"jina-html", build:u=>["https://r.jina.ai/"+u,{headers:{"X-Return-Format":"html"}}], mode:"html" },
+  { name:"codetabs",  build:u=>["https://api.codetabs.com/v1/proxy/?quest="+encodeURIComponent(u),{}], mode:"html" },
+  { name:"jina-text", build:u=>["https://r.jina.ai/"+u,{}], mode:"reader" }
+];
+
+const STOP = new Set("a an and the of to in for on with at by from is are was were be been being this that these those it its as or but if then than so we you your our their his her they them he she i me my mine our ours us not no yes do does did has have had can will would should could may might must about into over under more most some any all each other such only own same too very just also out up down off again further once here there when where why how what which who whom whose into".split(" "));
+
+const $ = s => document.querySelector(s);
+const esc = s => (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function setStatus(msg, busy=true){
+  $("#status").innerHTML = msg ? (busy?'<span class="dot"></span>':'') + esc(msg) : "";
+}
+
+/* ---------- read the page through a hosted reader (no backend) ---------- */
+function looksUsable(t, mode){
+  if(!t || t.length < 120) return false;
+  return mode==="html" ? /<\s*(html|head|title|meta|body|h1|main|article)/i.test(t) : /\w{20,}/.test(t);
+}
+async function fetchPage(url){
+  let lastErr = "";
+  for(const f of FETCHERS){
+    try{
+      const [u,opts] = f.build(url);
+      const r = await fetch(u, Object.assign({redirect:"follow"}, opts));
+      if(!r.ok){ lastErr = f.name+" → HTTP "+r.status; continue; }
+      const body = await r.text();
+      if(looksUsable(body, f.mode)) return { html:body, mode:f.mode };
+      lastErr = f.name+" → unusable response";
+    }catch(e){ lastErr = f.name+" → "+(e.message||e); }
+  }
+  throw new Error("No public reader could fetch it (last: "+lastErr+"). These free services rate-limit and go down — wait a minute and retry, or host this file on a real domain (still no backend) so its origin is accepted.");
+}
+
+/* ---------- extract real SEO signals ---------- */
+function extractSEO(html, url, mode){
+  // Fallback: a text reader returned markdown, not raw HTML. Title + body text
+  // are still real; HTML-only signals (meta, schema, links) aren't available.
+  if(mode==="reader"){
+    const tm = html.match(/^Title:\s*(.+)$/m);
+    const ci = html.indexOf("Markdown Content:");
+    const text = (ci>=0 ? html.slice(ci+17) : html).replace(/\s+/g," ").trim();
+    const words = text.toLowerCase().match(/[a-z][a-z'-]{1,}/g) || [];
+    const clean = words.filter(w=>!STOP.has(w) && w.length>2);
+    const freq = {}; clean.forEach(w=>freq[w]=(freq[w]||0)+1);
+    for(let i=0;i<clean.length-1;i++){ const b=clean[i]+" "+clean[i+1]; freq[b]=(freq[b]||0)+1.4; }
+    const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).filter(([k])=>k.length>3).slice(0,12).map(([k])=>k);
+    return {url, title:tm?tm[1].trim():"", desc:"", canon:"", viewport:null, lang:"", robots:"",
+      h1:[], h2:[], h3:[], imgCount:0, altCoverage:null, structured:null, og:null,
+      internal:null, external:null, wordCount:words.length, topTerms:top, partial:true};
+  }
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const get = (sel,attr) => { const el=doc.querySelector(sel); return el?(attr?el.getAttribute(attr):el.textContent.trim()):""; };
+
+  const title = get("title");
+  const desc  = get('meta[name="description"]',"content");
+  const canon = get('link[rel="canonical"]',"href");
+  const viewport = !!doc.querySelector('meta[name="viewport"]');
+  const lang  = doc.documentElement.getAttribute("lang") || "";
+  const robots= get('meta[name="robots"]',"content");
+
+  const h1 = [...doc.querySelectorAll("h1")].map(e=>e.textContent.trim()).filter(Boolean);
+  const h2 = [...doc.querySelectorAll("h2")].map(e=>e.textContent.trim()).filter(Boolean);
+  const h3 = [...doc.querySelectorAll("h3")].map(e=>e.textContent.trim()).filter(Boolean);
+
+  const imgs = [...doc.querySelectorAll("img")];
+  const imgsWithAlt = imgs.filter(i=>(i.getAttribute("alt")||"").trim().length>0).length;
+  const altCoverage = imgs.length ? imgsWithAlt/imgs.length : 1;
+
+  const ld = [...doc.querySelectorAll('script[type="application/ld+json"]')];
+  const og = !!doc.querySelector('meta[property^="og:"]');
+
+  // host for internal/external link split
+  let host=""; try{ host = new URL(url).hostname.replace(/^www\./,""); }catch(e){}
+  const links = [...doc.querySelectorAll("a[href]")].map(a=>a.getAttribute("href"));
+  let internal=0, external=0;
+  links.forEach(h=>{
+    if(/^https?:\/\//i.test(h)){ try{ (new URL(h).hostname.replace(/^www\./,"")===host?internal++:external++);}catch(e){} }
+    else if(h.startsWith("/")) internal++;
+  });
+
+  // body text → word count + top terms
+  doc.querySelectorAll("script,style,nav,footer,header,noscript").forEach(e=>e.remove());
+  const text = (doc.body?doc.body.textContent:"").replace(/\s+/g," ").trim();
+  const words = text.toLowerCase().match(/[a-z][a-z'-]{1,}/g) || [];
+  const wordCount = words.length;
+
+  // unigrams + bigrams
+  const freq = {};
+  const clean = words.filter(w=>!STOP.has(w) && w.length>2);
+  clean.forEach(w=>freq[w]=(freq[w]||0)+1);
+  for(let i=0;i<clean.length-1;i++){ const b=clean[i]+" "+clean[i+1]; freq[b]=(freq[b]||0)+1.4; }
+  const top = Object.entries(freq).sort((a,b)=>b[1]-a[1])
+    .filter(([k])=>k.length>3).slice(0,12).map(([k])=>k);
+
+  return {url,title,desc,canon,viewport,lang,robots,h1,h2,h3,
+    imgCount:imgs.length,altCoverage,structured:ld.length>0,og,
+    internal,external,wordCount,topTerms:top};
+}
+
+/* ---------- transparent SEO score from real signals ---------- */
+function scoreSEO(s){
+  if(s.partial){
+    let n=0; const tl=(s.title||"").length;
+    if(s.title) n += (tl>=30&&tl<=65)?35:22;
+    n += s.wordCount>=600?45:Math.round(45*Math.min(1,s.wordCount/600));
+    n += s.topTerms.length>=6?20:Math.round(20*s.topTerms.length/6);
+    return Math.max(0,Math.min(100,Math.round(n)));
+  }
+  let n=0;
+  const tl=(s.title||"").length;
+  if(s.title){ n += (tl>=30&&tl<=65)?20:12; }
+  const dl=(s.desc||"").length;
+  if(s.desc){ n += (dl>=70&&dl<=160)?15:9; }
+  n += s.h1.length===1?10:(s.h1.length>1?5:0);
+  n += s.h2.length>=2?10:(s.h2.length===1?5:0);
+  n += s.wordCount>=600?15:Math.round(15*Math.min(1,s.wordCount/600));
+  n += Math.round(10*s.altCoverage);
+  if(s.canon) n+=5;
+  if(s.structured) n+=10;
+  if(s.viewport) n+=5;
+  return Math.max(0,Math.min(100,Math.round(n)));
+}
+
+/* ---------- ask the AI answer engine ---------- */
+async function callAI(s, seoScore){
+  const ctx = JSON.stringify({
+    url:s.url, title:s.title, description:s.desc,
+    h1:s.h1.slice(0,3), h2:s.h2.slice(0,8),
+    word_count:s.wordCount, top_terms:s.topTerms,
+    has_structured_data:s.structured,
+    image_alt_coverage:(s.altCoverage==null?null:+s.altCoverage.toFixed(2)),
+    internal_links:s.internal, external_links:s.external,
+    note:s.partial?"only title/text were readable; some HTML signals unavailable":undefined
+  });
+
+  const prompt =
+`You are an SEO + GEO (Generative Engine Optimization) analyst. A page was scraped; here are its real signals:
+${ctx}
+
+Its measured SEO score is ${seoScore}/100.
+
+Return ONLY valid JSON (no markdown, no backticks, no prose) with EXACTLY this shape and keep every string tight and concrete — no fluff:
+{
+ "topic":"the page's primary topic & search intent, <=12 words",
+ "geo_score":<integer 0-100: how likely AI answer engines surface/cite this page>,
+ "seo_summary":"one blunt sentence on classic-search readiness",
+ "geo_summary":"one blunt sentence on AI-answer readiness",
+ "related_queries":["5 real questions this audience would type into Google or an AI"],
+ "ai_simulations":[
+   {"query":"one of the queries","ai_answer":"how an AI answer engine would respond in 2 sentences","would_cite":true|false,"why":"<=14 words on whether THIS page earns the citation"}
+ ],
+ "seo_actions":[{"action":"specific fix","priority":"high|med|low","why":"<=12 words"}],
+ "geo_actions":[{"action":"specific fix","priority":"high|med|low","why":"<=12 words"}]
+}
+Rules: ai_simulations has exactly 2 items (the 2 highest-intent queries). seo_actions and geo_actions each have 4-5 items, hardest-hitting first.`;
+
+  const key = getKey();
+  let raw;
+  if(key){
+    const url = "https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODEL+":generateContent?key="+encodeURIComponent(key);
+    const r = await fetch(url,{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        contents:[{parts:[{text:prompt}]}],
+        generationConfig:{responseMimeType:"application/json", temperature:0.4, maxOutputTokens:2048}
+      })
+    });
+    const d = await r.json();
+    if(d.error) throw new Error("Gemini: "+d.error.message+(d.error.code===403?" — enable the Generative Language API for this key's project, or generate a standard AIza… key at aistudio.google.com/apikey.":""));
+    raw = (d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts||[]).map(p=>p.text||"").join("");
+    if(!raw) throw new Error("Gemini returned no text (possible safety block or quota). Try again or check your key.");
+  } else {
+    // Fallback for the in-Claude.ai preview when no key is entered
+    const r = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})
+    });
+    const d = await r.json();
+    raw = (d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+  }
+  const clean = (raw||"").replace(/```json|```/g,"").trim();
+  const start = clean.indexOf("{"), end = clean.lastIndexOf("}");
+  if(start<0||end<0) throw new Error("Couldn't parse the AI response as JSON.");
+  return JSON.parse(clean.slice(start, end+1));
+}
+
+/* ---------- render ---------- */
+function flag(cond, okTxt, badTxt, mehCond){
+  if(mehCond) return `<span class="flag meh">${okTxt}</span>`;
+  return cond ? `<span class="flag ok">${okTxt}</span>` : `<span class="flag miss">${badTxt}</span>`;
+}
+
+function render(s, seoScore, ai){
+  const date = new Date().toLocaleString(undefined,{dateStyle:"medium",timeStyle:"short"});
+  const tl=(s.title||"").length, dl=(s.desc||"").length;
+
+  const partialNote = `<div class="err" style="border-color:var(--warn);color:var(--warn);margin:0 0 14px">Read via a text reader, so HTML-only signals (meta description, headings, structured data, links) weren't available. Title, word count and keywords below are real; the SEO score reflects only those.</div>`;
+  const snapshot = s.partial ? `${partialNote}
+    <div class="grid2">
+      <div class="cell"><div class="ck">Title (${(s.title||"").length} ch)</div><div class="cv">${esc(s.title)||"—"}</div></div>
+      <div class="cell"><div class="ck">Word count</div><div class="cv mono">${s.wordCount.toLocaleString()}</div></div>
+    </div>
+    <div class="chips">${s.topTerms.map(t=>`<span class="chip">${esc(t)}</span>`).join("")}</div>` : `
+    <div class="grid2">
+      <div class="cell"><div class="ck">Title (${tl} ch)</div><div class="cv">${esc(s.title)||"—"} ${flag(tl>=30&&tl<=65,"ok","fix",s.title&&!(tl>=30&&tl<=65))}</div></div>
+      <div class="cell"><div class="ck">Meta description (${dl} ch)</div><div class="cv">${esc(s.desc)||"missing"} ${flag(dl>=70&&dl<=160,"ok",s.desc?"len":"none",s.desc&&!(dl>=70&&dl<=160))}</div></div>
+      <div class="cell"><div class="ck">H1</div><div class="cv">${esc(s.h1[0])||"none"} ${flag(s.h1.length===1,"ok",s.h1.length>1?"many":"none",s.h1.length>1)}</div></div>
+      <div class="cell"><div class="ck">Headings</div><div class="cv mono">${s.h1.length}× H1 · ${s.h2.length}× H2 · ${s.h3.length}× H3</div></div>
+      <div class="cell"><div class="ck">Word count</div><div class="cv mono">${s.wordCount.toLocaleString()} ${flag(s.wordCount>=600,"ok","thin",s.wordCount>=300&&s.wordCount<600)}</div></div>
+      <div class="cell"><div class="ck">Image alt coverage</div><div class="cv mono">${Math.round(s.altCoverage*100)}% of ${s.imgCount} ${flag(s.altCoverage>=.8,"ok","fix",s.altCoverage>=.5&&s.altCoverage<.8)}</div></div>
+      <div class="cell"><div class="ck">Structured data (JSON-LD)</div><div class="cv">${flag(s.structured,"present","none")}</div></div>
+      <div class="cell"><div class="ck">Canonical / viewport</div><div class="cv">${flag(!!s.canon,"canon","none")} ${flag(s.viewport,"mobile","none")}</div></div>
+      <div class="cell"><div class="ck">Links</div><div class="cv mono">${s.internal} internal · ${s.external} external</div></div>
+      <div class="cell"><div class="ck">Open Graph</div><div class="cv">${flag(s.og,"present","none")}</div></div>
+    </div>
+    <div class="chips">${s.topTerms.map(t=>`<span class="chip">${esc(t)}</span>`).join("")}</div>`;
+
+  const queries = `<ol class="queries">${(ai.related_queries||[]).map((q,i)=>
+    `<li><span class="q-i">${String(i+1).padStart(2,"0")}</span><span>${esc(q)}</span></li>`).join("")}</ol>`;
+
+  const sims = (ai.ai_simulations||[]).map(x=>`
+    <div class="sim">
+      <div class="sq">${esc(x.query)}</div>
+      <div class="sa">${esc(x.ai_answer)}</div>
+      <div class="cite">${x.would_cite
+        ? `<span class="flag ok">would cite you</span>`
+        : `<span class="flag miss">won't cite you</span>`}
+        <span>${esc(x.why)}</span></div>
+    </div>`).join("");
+
+  const acts = arr => `<ul class="actions">${(arr||[]).map(a=>`
+    <li><span class="pri ${esc(a.priority)}">${esc(a.priority)}</span>
+      <div><div class="at">${esc(a.action)}</div><div class="aw">${esc(a.why)}</div></div></li>`).join("")}</ul>`;
+
+  $("#report").innerHTML = `
+    <div class="rpt-head">
+      <div class="rpt-url">${esc(s.url)}</div>
+      <div class="rpt-name">${esc(s.title)||esc(ai.topic)||"Untitled page"}</div>
+      <div class="rpt-meta">${esc(ai.topic)} · audited ${esc(date)}</div>
+    </div>
+
+    <div class="scores">
+      <div class="score s"><div class="lbl">SEO · classic search</div>
+        <div class="num">${seoScore}<small>/100</small></div>
+        <div class="one">${esc(ai.seo_summary)}</div></div>
+      <div class="score g"><div class="lbl">GEO · AI answer engines</div>
+        <div class="num">${ai.geo_score}<small>/100</small></div>
+        <div class="one">${esc(ai.geo_summary)}</div></div>
+    </div>
+
+    <section class="section">
+      <div class="kicker s">01 — what the page actually sends</div>
+      <h2>Search signals</h2>
+      ${snapshot}
+    </section>
+
+    <section class="section">
+      <div class="kicker g">02 — the questions your audience asks</div>
+      <h2>Query cluster</h2>
+      ${queries}
+    </section>
+
+    <section class="section">
+      <div class="kicker g">03 — what the AI says, and whether you're in it</div>
+      <h2>Answer-engine simulation</h2>
+      ${sims}
+    </section>
+
+    <section class="section">
+      <div class="kicker">04 — do these, in order</div>
+      <h2>Action plan</h2>
+      <div class="twocol">
+        <div><div class="col-head s">SEO</div>${acts(ai.seo_actions)}</div>
+        <div><div class="col-head g">GEO</div>${acts(ai.geo_actions)}</div>
+      </div>
+    </section>
+
+    <div class="toolbar">
+      <span class="note">Scores: SEO is measured from the page's real signals; GEO is the engine's read of citation-worthiness. AI answers are simulated, not scraped from any single product.</span>
+      <button class="btn-ghost" onclick="window.print()">Save as PDF</button>
+    </div>`;
+
+  $("#report").style.display = "block";
+}
+
+/* ---------- orchestrate ---------- */
+async function run(){
+  let url = $("#url").value.trim();
+  if(!url) return setStatus("Enter a URL first.", false);
+  if(!/^https?:\/\//i.test(url)) url = "https://" + url;
+  $("#run").disabled = true; $("#report").style.display="none";
+  $("#report").innerHTML=""; setStatus("Fetching the page…");
+  try{
+    const page = await fetchPage(url);
+    setStatus("Reading search signals…");
+    const seo = extractSEO(page.html, url, page.mode);
+    const seoScore = scoreSEO(seo);
+    setStatus("Asking the AI answer engine your audience's questions…");
+    const ai = await callAI(seo, seoScore);
+    setStatus("");
+    render(seo, seoScore, ai);
+    $("#report").scrollIntoView({behavior:"smooth"});
+  }catch(e){
+    setStatus("");
+    $("#report").style.display="none";
+    $("#report").innerHTML = `<div class="err">${esc(e.message||String(e))}</div>`;
+    $("#report").style.display="block";
+  }finally{
+    $("#run").disabled = false;
+  }
+}
+$("#run").addEventListener("click", run);
+$("#url").addEventListener("keydown", e=>{ if(e.key==="Enter") run(); });
+
+// key field: prefill from browser store, persist on edit, toggle visibility
+(function(){
+  const k=$("#gkey"); if(!k) return;
+  k.value = getKey();
+  k.addEventListener("input", ()=>setKey(k.value.trim()));
+  $("#gshow").addEventListener("change", e=>{ k.type = e.target.checked?"text":"password"; });
+})();
+</script>
+</body>
+</html>
