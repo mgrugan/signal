@@ -35,8 +35,7 @@
   /* interactive green network — fixed behind all content */
   #net{position:fixed;inset:0;width:100%;height:100%;z-index:0;display:block;
     background:
-      radial-gradient(1100px 620px at 72% -8%, rgba(61,220,132,.10), transparent 60%),
-      radial-gradient(900px 620px at 0% 108%, rgba(34,211,238,.07), transparent 55%),
+      radial-gradient(1300px 760px at 84% -18%, rgba(61,220,132,.045), transparent 60%),
       var(--paper);}
   .wrap{max-width:880px;margin:0 auto;padding:0 28px;position:relative;z-index:1}
   a{color:inherit}
@@ -45,7 +44,7 @@
   .masthead{padding:46px 0 26px;border-bottom:1.5px solid var(--ink)}
   .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--slate)}
   .title{font-family:var(--serif);font-weight:700;font-size:60px;line-height:.98;margin:10px 0 6px;letter-spacing:-.03em}
-  .title em{font-style:italic;color:var(--net);text-shadow:0 0 26px rgba(61,220,132,.45)}
+  .title em{font-style:normal;color:var(--net);text-shadow:0 0 16px rgba(61,220,132,.20)}
   .sub{font-size:15px;color:var(--slate);max-width:54ch}
 
   /* ---- input ---- */
@@ -64,7 +63,7 @@
     cursor:pointer;text-transform:uppercase;border-radius:0;
     transition:background .2s,box-shadow .2s;
   }
-  .field button:hover{background:#5BE49B;border-color:#5BE49B;box-shadow:0 0 22px rgba(61,220,132,.35)}
+  .field button:hover{background:#5BE49B;border-color:#5BE49B;box-shadow:0 0 16px rgba(61,220,132,.20)}
   .field button:disabled{opacity:.45;cursor:wait}
   .hint{font-size:12.5px;color:var(--slate);margin-top:10px;font-family:var(--mono)}
   .hint a{color:var(--net)} .hint code{background:var(--panel-solid);border:1px solid var(--hair);padding:0 4px}
@@ -928,12 +927,14 @@ $("#url").addEventListener("keydown", e=>{ if(e.key==="Enter") run(); });
 })();
 
 /* ============================================================
-   INTERACTIVE GREEN NETWORK
+   INTERACTIVE NETWORK  (mouse-reactive, kept understated)
    ------------------------------------------------------------
-   A cursor-aware constellation drawn behind the page: drifting
-   nodes link to their neighbours, and the pointer pulls in a
-   brighter web of green lines to whatever is nearby.
-   Honours prefers-reduced-motion (renders a single static frame).
+   Drifting nodes link to their neighbours and are gently drawn
+   toward the pointer, which trails a soft web to the nodes nearby
+   — the same interaction as before, but toned down: one muted
+   green, low opacity, thinner lines, a gentle (not grabby) pull
+   and a small anchor dot instead of a glowing sci-fi orb.
+   Honours prefers-reduced-motion (single static frame, no cursor).
    ============================================================ */
 (function(){
   const canvas = document.getElementById("net");
@@ -941,12 +942,11 @@ $("#url").addEventListener("keydown", e=>{ if(e.key==="Enter") run(); });
   const ctx = canvas.getContext("2d");
   const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const GREEN = "61,220,132";   // --net, as rgb components for rgba()
-  const CYAN  = "34,211,238";   // --geo
+  const LINE = "124,192,156";   // muted sage-green — professional, not neon
   let W=0, H=0, DPR=1, nodes=[], raf=0, running=true;
   const mouse = { x:null, y:null, on:false };
-  const LINK = 130;             // node-to-node link distance
-  const REACH = 190;            // cursor reach distance
+  const LINK = 122;             // node-to-node link distance
+  const REACH = 200;            // cursor influence radius
 
   function size(){
     DPR = Math.min(window.devicePixelRatio||1, 2);
@@ -956,12 +956,12 @@ $("#url").addEventListener("keydown", e=>{ if(e.key==="Enter") run(); });
     build();
   }
   function build(){
-    // scale node count to viewport, kept modest for performance
-    const count = Math.max(28, Math.min(90, Math.round(W*H/16000)));
+    // enough nodes to read as a network, not so many it turns busy
+    const count = Math.max(18, Math.min(58, Math.round(W*H/20000)));
     nodes = new Array(count).fill(0).map(()=>({
       x:Math.random()*W, y:Math.random()*H,
-      vx:(Math.random()-.5)*0.35, vy:(Math.random()-.5)*0.35,
-      r:Math.random()*1.6+0.8
+      vx:(Math.random()-.5)*0.16, vy:(Math.random()-.5)*0.16,   // calmer drift
+      r:Math.random()*1.1+0.7
     }));
   }
   function step(){
@@ -971,53 +971,46 @@ $("#url").addEventListener("keydown", e=>{ if(e.key==="Enter") run(); });
         n.x+=n.vx; n.y+=n.vy;
         if(n.x<0||n.x>W) n.vx*=-1;
         if(n.y<0||n.y>H) n.vy*=-1;
-        // gentle pull toward the cursor
+        // gentle pull toward the cursor — tapers to nothing at the edge of REACH
         if(mouse.on){
           const dx=mouse.x-n.x, dy=mouse.y-n.y, d=Math.hypot(dx,dy);
-          if(d<REACH && d>0.01){ n.x+=dx/d*0.35; n.y+=dy/d*0.35; }
+          if(d<REACH && d>0.01){ const f=(1-d/REACH)*0.45; n.x+=dx/d*f; n.y+=dy/d*f; }
         }
       }
     }
-    // node-to-node links
+    // node-to-node links — faint, muted
     for(let i=0;i<nodes.length;i++){
       const a=nodes[i];
       for(let j=i+1;j<nodes.length;j++){
         const b=nodes[j];
         const dx=a.x-b.x, dy=a.y-b.y, dist=Math.hypot(dx,dy);
         if(dist<LINK){
-          ctx.strokeStyle="rgba("+GREEN+","+(0.14*(1-dist/LINK)).toFixed(3)+")";
+          ctx.strokeStyle="rgba("+LINE+","+(0.07*(1-dist/LINK)).toFixed(3)+")";
           ctx.lineWidth=1;
           ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
         }
       }
-      // nodes
-      ctx.fillStyle="rgba("+GREEN+",0.55)";
+      ctx.fillStyle="rgba("+LINE+",0.30)";
       ctx.beginPath(); ctx.arc(a.x,a.y,a.r,0,Math.PI*2); ctx.fill();
     }
-    // cursor web — the brighter connections that follow the pointer
+    // cursor web — the connections that follow the pointer (toned down, no glow)
     if(mouse.on){
       for(const n of nodes){
-        const dx=mouse.x-n.x, dy=mouse.y-n.y, dist=Math.hypot(dx,dy);
-        if(dist<REACH){
-          const a=0.5*(1-dist/REACH);
-          ctx.strokeStyle="rgba("+GREEN+","+a.toFixed(3)+")";
-          ctx.lineWidth=1.1;
+        const dx=mouse.x-n.x, dy=mouse.y-n.y, d=Math.hypot(dx,dy);
+        if(d<REACH){
+          ctx.strokeStyle="rgba("+LINE+","+(0.20*(1-d/REACH)).toFixed(3)+")";
+          ctx.lineWidth=1;
           ctx.beginPath(); ctx.moveTo(mouse.x,mouse.y); ctx.lineTo(n.x,n.y); ctx.stroke();
         }
       }
-      // glowing pointer node
-      const g=ctx.createRadialGradient(mouse.x,mouse.y,0,mouse.x,mouse.y,16);
-      g.addColorStop(0,"rgba("+CYAN+",0.9)");
-      g.addColorStop(1,"rgba("+GREEN+",0)");
-      ctx.fillStyle=g;
-      ctx.beginPath(); ctx.arc(mouse.x,mouse.y,16,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle="rgba("+CYAN+",0.95)";
-      ctx.beginPath(); ctx.arc(mouse.x,mouse.y,2.4,0,Math.PI*2); ctx.fill();
+      // small, flat anchor dot at the pointer (no radial glow)
+      ctx.fillStyle="rgba("+LINE+",0.55)";
+      ctx.beginPath(); ctx.arc(mouse.x,mouse.y,1.8,0,Math.PI*2); ctx.fill();
     }
     if(!reduce && running) raf=requestAnimationFrame(step);
   }
 
-  // pointer tracking (mouse + touch)
+  // pointer tracking (mouse + touch) — nodes follow the real pointer
   window.addEventListener("mousemove", e=>{ mouse.x=e.clientX; mouse.y=e.clientY; mouse.on=true; }, {passive:true});
   window.addEventListener("mouseleave", ()=>{ mouse.on=false; });
   window.addEventListener("touchmove", e=>{ const t=e.touches[0]; if(t){ mouse.x=t.clientX; mouse.y=t.clientY; mouse.on=true; } }, {passive:true});
@@ -1029,7 +1022,7 @@ $("#url").addEventListener("keydown", e=>{ if(e.key==="Enter") run(); });
   });
 
   size();
-  step(); // draws one frame (and starts the loop unless reduced-motion)
+  step(); // one static frame under reduced-motion; otherwise starts the loop
 })();
 </script>
 </body>
