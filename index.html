@@ -82,6 +82,26 @@
   @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
   .err{border:1.5px solid var(--bad);padding:16px 18px;color:var(--bad);font-family:var(--mono);font-size:13px;margin:24px 0}
 
+  /* ---- live console ---- */
+  #console{display:none;margin:24px 0 4px;border:1px solid var(--hair);background:#0A100D;
+    border-radius:9px;overflow:hidden;box-shadow:0 24px 60px -34px rgba(0,0,0,.85),0 0 0 1px rgba(61,220,132,.05)}
+  #console .bar{display:flex;align-items:center;gap:7px;padding:9px 13px;border-bottom:1px solid var(--hair);background:#0C130F}
+  #console .bar i{width:11px;height:11px;border-radius:50%;display:inline-block}
+  #console .bar .r{background:var(--bad)} #console .bar .y{background:var(--warn)} #console .bar .g{background:var(--net)}
+  #console .bar .cap{margin-left:8px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--slate);text-transform:uppercase}
+  #consoleBody{max-height:300px;overflow-y:auto;padding:14px 16px;font-family:var(--mono);font-size:12.5px;line-height:1.7}
+  #consoleBody div{white-space:pre-wrap;word-break:break-word}
+  #consoleBody div+div{margin-top:2px}
+  .t-dim{color:var(--slate)} .t-ok{color:var(--good)} .t-warn{color:var(--warn)} .t-bad{color:var(--bad)}
+  .t-net{color:var(--geo)} .t-cmd{color:var(--ink)}
+  .caret::after{content:"▋";margin-left:2px;color:var(--net);animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  #consoleBody::-webkit-scrollbar{width:8px}
+  #consoleBody::-webkit-scrollbar-thumb{background:var(--hair);border-radius:8px}
+  .con-in{animation:conin .25s ease-out}
+  @keyframes conin{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.con-in{animation:none}}
+
   /* ---- report ---- */
   #report{display:none}
   .rpt-head{padding:34px 0 24px;border-bottom:1px solid var(--hair)}
@@ -159,7 +179,7 @@
     }
     body{background:#fff;color:#141414}
     #net{display:none !important}
-    .masthead,.panel,#status,.toolbar{display:none !important}
+    .masthead,.panel,#status,#console,.toolbar{display:none !important}
     #report{display:block !important}
     .wrap{max-width:none;padding:0}
     .section,.sim{break-inside:avoid}
@@ -193,6 +213,11 @@
 
   <div id="status"></div>
 
+  <div id="console" aria-live="polite">
+    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="cap">signal — live audit</span></div>
+    <div id="consoleBody"></div>
+  </div>
+
   <main id="report"></main>
 
 </div>
@@ -219,13 +244,21 @@ function getKey(){ try{ return (localStorage.getItem(KEY_STORE)||"").trim(); }ca
 function setKey(v){ try{ localStorage.setItem(KEY_STORE, v); }catch(e){ window.__k = v; } }
 
 /* Readers that add the cross-origin header for us — no backend of your own.
-   Tested June 2026: Jina Reader is reliable and returns RAW HTML when asked
-   (so meta tags & JSON-LD survive). codetabs often works from a real browser
-   origin. corsproxy.io now blocks free use; allorigins is frequently down. */
+   These free services rate-limit and go down, so we try several in order and
+   keep the first that returns a usable page. RAW-HTML readers come first (so
+   meta tags & JSON-LD survive); the text reader is a last-resort fallback that
+   yields a partial audit. `unwrap` pulls the HTML out of a JSON envelope.
+   Note (July 2026): Jina Reader now returns 401 without an API key, so it's
+   demoted to the bottom — the raw-HTML CORS proxies above it do the real work. */
 const FETCHERS = [
-  { name:"jina-html", build:u=>["https://r.jina.ai/"+u,{headers:{"X-Return-Format":"html"}}], mode:"html" },
-  { name:"codetabs",  build:u=>["https://api.codetabs.com/v1/proxy/?quest="+encodeURIComponent(u),{}], mode:"html" },
-  { name:"jina-text", build:u=>["https://r.jina.ai/"+u,{}], mode:"reader" }
+  { name:"codetabs",       build:u=>["https://api.codetabs.com/v1/proxy/?quest="+encodeURIComponent(u),{}], mode:"html" },
+  { name:"allorigins",     build:u=>["https://api.allorigins.win/raw?url="+encodeURIComponent(u),{}], mode:"html" },
+  { name:"allorigins-json",build:u=>["https://api.allorigins.win/get?url="+encodeURIComponent(u),{}], mode:"html", unwrap:t=>JSON.parse(t).contents||"" },
+  { name:"corsproxy",      build:u=>["https://corsproxy.io/?url="+encodeURIComponent(u),{}], mode:"html" },
+  { name:"cors.eu",        build:u=>["https://cors.eu.org/"+u,{}], mode:"html" },
+  { name:"thingproxy",     build:u=>["https://thingproxy.freeboard.io/fetch/"+u,{}], mode:"html" },
+  { name:"jina-html",      build:u=>["https://r.jina.ai/"+u,{headers:{"X-Return-Format":"html"}}], mode:"html" },
+  { name:"jina-text",      build:u=>["https://r.jina.ai/"+u,{}], mode:"reader" }
 ];
 
 const STOP = new Set("a an and the of to in for on with at by from is are was were be been being this that these those it its as or but if then than so we you your our their his her they them he she i me my mine our ours us not no yes do does did has have had can will would should could may might must about into over under more most some any all each other such only own same too very just also out up down off again further once here there when where why how what which who whom whose into".split(" "));
@@ -237,6 +270,28 @@ function setStatus(msg, busy=true){
   $("#status").innerHTML = msg ? (busy?'<span class="dot"></span>':'') + esc(msg) : "";
 }
 
+/* ---------- live console (a little "device" that logs the audit as it runs) ---------- */
+const REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function conReset(){ const b=$("#consoleBody"); if(b) b.innerHTML=""; const c=$("#console"); if(c) c.style.display="none"; }
+function conShow(){ const c=$("#console"); if(c) c.style.display="block"; }
+function conLine(text, cls="t-dim"){
+  const b=$("#consoleBody"); if(!b) return null;
+  const d=document.createElement("div");
+  d.className=cls+" con-in";
+  d.textContent=text;
+  b.appendChild(d); b.scrollTop=b.scrollHeight;
+  return d;
+}
+async function conType(text, cls="t-cmd"){
+  const b=$("#consoleBody"); if(!b) return null;
+  const d=document.createElement("div"); d.className=cls; b.appendChild(d);
+  if(REDUCED){ d.textContent=text; b.scrollTop=b.scrollHeight; return d; }
+  d.classList.add("caret");
+  for(let i=0;i<text.length;i++){ d.textContent=text.slice(0,i+1); b.scrollTop=b.scrollHeight; await new Promise(r=>setTimeout(r,9)); }
+  d.classList.remove("caret");
+  return d;
+}
+
 /* ---------- read the page through a hosted reader (no backend) ---------- */
 function looksUsable(t, mode){
   if(!t || t.length < 120) return false;
@@ -245,16 +300,26 @@ function looksUsable(t, mode){
 async function fetchPage(url){
   let lastErr = "";
   for(const f of FETCHERS){
+    conLine("→ reader: "+f.name+" …", "t-dim");
     try{
       const [u,opts] = f.build(url);
       const r = await fetch(u, Object.assign({redirect:"follow"}, opts));
-      if(!r.ok){ lastErr = f.name+" → HTTP "+r.status; continue; }
-      const body = await r.text();
-      if(looksUsable(body, f.mode)) return { html:body, mode:f.mode };
+      if(!r.ok){
+        lastErr = f.name+" → HTTP "+r.status;
+        conLine("  ✗ "+f.name+" → HTTP "+r.status+(r.status===401?" (reader needs a key)":r.status===429?" (rate-limited)":""), "t-bad");
+        continue;
+      }
+      let body = await r.text();
+      if(f.unwrap){ try{ body = f.unwrap(body); }catch(e){ lastErr=f.name+" → bad envelope"; conLine("  ✗ "+f.name+" → unreadable envelope", "t-bad"); continue; } }
+      if(looksUsable(body, f.mode)){
+        conLine("  ✓ "+f.name+" → "+(body.length).toLocaleString()+" bytes"+(f.mode==="reader"?" (text only — partial audit)":""), "t-ok");
+        return { html:body, mode:f.mode };
+      }
       lastErr = f.name+" → unusable response";
-    }catch(e){ lastErr = f.name+" → "+(e.message||e); }
+      conLine("  ✗ "+f.name+" → unusable response", "t-warn");
+    }catch(e){ lastErr = f.name+" → "+(e.message||e); conLine("  ✗ "+f.name+" → "+(e.message||e), "t-bad"); }
   }
-  throw new Error("No public reader could fetch it (last: "+lastErr+"). These free services rate-limit and go down — wait a minute and retry, or host this file on a real domain (still no backend) so its origin is accepted.");
+  throw new Error("No public reader could fetch it (last: "+lastErr+"). These free CORS readers rate-limit and go down — wait a minute and retry, or host this file on a real domain (still no backend) so its origin is accepted.");
 }
 
 /* ---------- extract real SEO signals ---------- */
@@ -516,18 +581,34 @@ async function run(){
   if(!/^https?:\/\//i.test(url)) url = "https://" + url;
   $("#run").disabled = true; $("#report").style.display="none";
   $("#report").innerHTML=""; setStatus("Fetching the page…");
+  conReset(); conShow();
+  await conType("$ signal audit "+url, "t-cmd");
   try{
+    conLine("Fetching the page through a public reader …", "t-net");
     const page = await fetchPage(url);
     setStatus("Reading search signals…");
+    conLine("Reading search signals …", "t-net");
     const seo = extractSEO(page.html, url, page.mode);
     const seoScore = scoreSEO(seo);
+    conLine("  • title: "+(seo.title?('"'+seo.title.slice(0,58)+'"'):"— none"), seo.title?"t-dim":"t-warn");
+    if(!seo.partial){
+      conLine("  • headings: "+seo.h1.length+"× H1 · "+seo.h2.length+"× H2 · "+seo.h3.length+"× H3", "t-dim");
+      conLine("  • structured data: "+(seo.structured?"present":"none")+"  ·  open graph: "+(seo.og?"present":"none"), "t-dim");
+      conLine("  • links: "+seo.internal+" internal · "+seo.external+" external", "t-dim");
+    }else{
+      conLine("  • text-only read — some HTML signals (meta, schema, links) unavailable", "t-warn");
+    }
+    conLine("  • word count: "+seo.wordCount.toLocaleString()+"   →   SEO score "+seoScore+"/100", "t-ok");
     setStatus("Asking the AI answer engine your audience's questions…");
+    conLine("Asking the AI answer engine ("+(getKey()?GEMINI_MODEL:"preview model")+") your audience's questions …", "t-net");
     const ai = await callAI(seo, seoScore);
+    conLine("✓ audit complete — GEO score "+ai.geo_score+"/100. Rendering report ▾", "t-ok");
     setStatus("");
     render(seo, seoScore, ai);
     $("#report").scrollIntoView({behavior:"smooth"});
   }catch(e){
     setStatus("");
+    conLine("✗ "+(e.message||String(e)), "t-bad");
     $("#report").style.display="none";
     $("#report").innerHTML = `<div class="err">${esc(e.message||String(e))}</div>`;
     $("#report").style.display="block";
