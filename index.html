@@ -88,45 +88,50 @@
   @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
   .err{border:1.5px solid var(--bad);padding:16px 18px;color:var(--bad);font-family:var(--mono);font-size:13px;margin:24px 0}
 
-  /* ---- crawl loader: head-scratching robot + progress ring (dark spotlight card) ---- */
-  #crawlbot{display:none;position:relative;margin:24px 0 6px;border:1px solid #1E2621;background:#0A100D;
-    border-radius:16px;overflow:hidden;box-shadow:0 30px 70px -40px rgba(20,30,24,.55)}
-  .cb-spot{position:absolute;inset:0;pointer-events:none;background:
-    radial-gradient(620px 320px at 20% -12%, rgba(61,220,132,.20), transparent 60%),
-    radial-gradient(420px 280px at 96% 118%, rgba(34,211,238,.10), transparent 60%)}
-  .cb-inner{position:relative;display:flex;align-items:center;gap:18px;padding:24px 28px;min-height:224px}
-  .cb-left{flex:1;min-width:0}
-  .cb-eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#8fb7a1}
-  .cb-dot{width:8px;height:8px;border-radius:50%;background:#3DDC84;box-shadow:0 0 10px #3DDC84;animation:botPulse 1.4s ease-in-out infinite}
-  .cb-title{font-family:var(--serif);font-weight:700;font-size:30px;line-height:1.06;letter-spacing:-.02em;margin:13px 0 9px;color:#EAF2EC}
-  .cb-sub{font-family:var(--sans);font-size:14.5px;line-height:1.5;color:#9fb3a6;max-width:44ch}
-  .cb-right{flex:none}
-  .cb-stage{position:relative;width:236px;height:240px}
-  .cb-ringwrap,.cb-botwrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
-  .cb-ring{width:210px;height:210px}
-  .ring-prog{transition:stroke-dashoffset .55s cubic-bezier(.4,0,.2,1)}
-  .cb-right.indet .cb-ring{animation:ringSpin 1.15s linear infinite;transform-origin:50% 50%}
-  svg.bot{width:212px;height:232px;overflow:visible}
-  .cb-pct{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:12px;font-weight:700;
-    color:#3DDC84;background:rgba(8,14,11,.75);border:1px solid #1E2621;padding:2px 11px;border-radius:20px}
-  @media (max-width:640px){ .cb-inner{flex-direction:column;text-align:center;gap:6px} .cb-left{order:2} .cb-sub{max-width:none} .cb-stage{width:210px;height:214px} .cb-ring{width:188px;height:188px} svg.bot{width:190px;height:210px} }
+  /* ---- hero: form left, cursor-tracking robot right ---- */
+  .hero{position:relative;z-index:1}
+  .hero-inner{max-width:1080px;margin:0 auto;padding:8px 28px 0;display:grid;grid-template-columns:1.08fr .92fr;gap:44px;align-items:center}
+  .hero-left{min-width:0}
+  .hero-right{display:flex;justify-content:center}
+  .robot-stage{position:relative;width:100%;max-width:400px;aspect-ratio:1/1.02;border-radius:22px;overflow:hidden;
+    background:radial-gradient(120% 120% at 22% 8%, #171d21 0%, #0a0e11 46%, #05070a 100%);
+    border:1px solid #1b2126;box-shadow:0 40px 90px -50px rgba(6,12,9,.9), inset 0 1px 0 rgba(255,255,255,.05)}
+  .robot-spot{position:absolute;inset:0;pointer-events:none;background:
+    radial-gradient(300px 200px at 20% 6%, rgba(255,255,255,.14), transparent 62%),
+    radial-gradient(360px 260px at 92% 118%, rgba(61,220,132,.12), transparent 60%)}
+  .ringsvg{position:absolute;top:50%;left:50%;width:82%;height:82%;transform:translate(-50%,-50%);opacity:0;transition:opacity .5s ease}
+  .robot-stage.busy .ringsvg{opacity:1}
+  .robot-stage.busy.indet .ringsvg{animation:ringSpin 1.2s linear infinite}
+  .ring-prog2{transition:stroke-dashoffset .55s cubic-bezier(.4,0,.2,1)}
+  .robot{position:absolute;top:50%;left:50%;width:78%;height:88%;transform:translate(-50%,-46%);overflow:visible}
+  .robot-pct{position:absolute;left:0;right:0;bottom:52px;text-align:center;font-family:var(--serif);font-weight:700;
+    font-size:30px;letter-spacing:-.02em;color:#EAF2EC;opacity:0;transition:opacity .4s ease;text-shadow:0 2px 14px rgba(0,0,0,.5)}
+  .robot-cap{position:absolute;left:0;right:0;bottom:22px;text-align:center;font-family:var(--mono);font-size:11.5px;
+    letter-spacing:.06em;color:#9fb3a6;opacity:0;transition:opacity .4s ease;padding:0 16px}
+  .robot-stage.busy .robot-pct,.robot-stage.busy .robot-cap{opacity:1}
+  @media (max-width:860px){ .hero-inner{grid-template-columns:1fr;gap:22px} .hero-right{order:2} .robot-stage{max-width:320px} }
+  @media (max-width:480px){ .robot-stage{max-width:260px} .robot-pct{font-size:24px;bottom:44px} }
 
-  .bot-float{animation:botFloat 3s ease-in-out infinite}
-  .bot-shadow{transform-box:fill-box;transform-origin:50% 50%;animation:botShadow 3s ease-in-out infinite}
-  .bot-scratch{transform-box:fill-box;transform-origin:50% 100%;animation:botScratch .5s ease-in-out infinite}
-  .bot-tilt{transform-box:fill-box;transform-origin:50% 100%;animation:botTilt 4s ease-in-out infinite}
-  .bot-eye{transform-box:fill-box;transform-origin:50% 50%;animation:botBlink 4.6s ease-in-out infinite}
-  .bot-pulse{transform-box:fill-box;transform-origin:50% 50%;animation:botPulse 1.7s ease-in-out infinite}
-  .bot-q{transform-box:fill-box;transform-origin:50% 50%;animation:botQ 2.3s ease-in-out infinite}
-  @keyframes botFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-  @keyframes botShadow{0%,100%{transform:scaleX(1);opacity:.35}50%{transform:scaleX(.85);opacity:.24}}
-  @keyframes botScratch{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(6deg)}}
-  @keyframes botTilt{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(2.5deg)}}
-  @keyframes botBlink{0%,90%,100%{transform:scaleY(1)}95%{transform:scaleY(.12)}}
-  @keyframes botQ{0%,100%{transform:translateY(1px);opacity:.5}50%{transform:translateY(-5px);opacity:1}}
-  @keyframes ringSpin{to{transform:rotate(360deg)}}
+  /* robot animation + cursor-tracking transforms (vars set by JS) */
+  .r-float{animation:rFloat 4.2s ease-in-out infinite}
+  .r-shadow{transform-box:fill-box;transform-origin:50% 50%;animation:rShadow 4.2s ease-in-out infinite}
+  .r-core{transform-box:fill-box;transform-origin:50% 50%;animation:rCore 2s ease-in-out infinite}
+  .r-eye{transform-box:fill-box;transform-origin:50% 50%;animation:rBlink 5s ease-in-out infinite}
+  .r-head{transform-box:fill-box;transform-origin:50% 100%;transform:translate(var(--hx,0px),var(--hy,0px)) rotate(var(--hr,0deg))}
+  .r-eyes{transform:translate(var(--ex,0px),var(--ey,0px))}
+  .r-arm-raised{opacity:0;transition:opacity .35s ease}
+  .robot.busy .r-arm-rest{opacity:.35;transition:opacity .35s ease}
+  .robot.busy .r-arm-raised{opacity:1}
+  .r-forearm{transform-box:fill-box;transform-origin:74% 78%}
+  .robot.busy .r-forearm{animation:rScratch .42s ease-in-out infinite}
+  @keyframes rFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  @keyframes rShadow{0%,100%{transform:scaleX(1);opacity:.42}50%{transform:scaleX(.86);opacity:.3}}
+  @keyframes rCore{0%,100%{opacity:.65}50%{opacity:1}}
+  @keyframes rBlink{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(.12)}}
+  @keyframes rScratch{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(6deg)}}
+  @keyframes ringSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}
   @media (prefers-reduced-motion:reduce){
-    .bot-float,.bot-shadow,.bot-scratch,.bot-tilt,.bot-eye,.bot-pulse,.bot-q,.cb-dot,.cb-right.indet .cb-ring{animation:none!important}
+    .r-float,.r-shadow,.r-core,.r-eye,.robot.busy .r-forearm,.robot-stage.busy.indet .ringsvg{animation:none!important}
   }
 
   /* ---- live console (a dark "terminal" device — colours are fixed, not theme-linked) ---- */
@@ -288,7 +293,7 @@
     }
     body{background:#fff;color:#141414}
     #net{display:none !important}
-    .masthead,.panel,#status,#console,#crawlbot,.toolbar{display:none !important}
+    .hero,#status,#console,.toolbar{display:none !important}
     #report{display:block !important}
     .wrap{max-width:none;padding:0}
     .section,.sim{break-inside:avoid}
@@ -300,115 +305,116 @@
 </head>
 <body>
 <canvas id="net" aria-hidden="true"></canvas>
-<div class="wrap">
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-left">
+      <header class="masthead">
+        <div class="eyebrow">SEO + Generative Engine Optimization · audit</div>
+        <h1 class="title">Signal<em>.</em></h1>
+        <p class="sub">Paste a URL. It reads the page's real search signals, asks an AI answer engine the questions your audience would, and returns one no-fluff action plan for both classic search and AI answers.</p>
+      </header>
 
-  <header class="masthead">
-    <div class="eyebrow">SEO + Generative Engine Optimization · audit</div>
-    <h1 class="title">Signal<em>.</em></h1>
-    <p class="sub">Paste a URL. It reads the page's real search signals, asks an AI answer engine the questions your audience would, and returns one no-fluff action plan for both classic search and AI answers.</p>
-  </header>
-
-  <section class="panel">
-    <div class="field">
-      <input id="url" type="url" placeholder="https://example.com" autocomplete="off" spellcheck="false" />
-      <button id="run">Run audit</button>
-    </div>
-    <div class="keyrow">
-      <input id="gkey" type="password" placeholder="Gemini API key — stored in your browser only" autocomplete="off" spellcheck="false" />
-      <label class="show"><input id="gshow" type="checkbox" /> show</label>
-    </div>
-    <div class="optrow">
-      <label for="depth">Crawl</label>
-      <select id="depth">
-        <option value="1">This page only</option>
-        <option value="15" selected>Up to 15 pages</option>
-        <option value="30">Up to 30 pages</option>
-        <option value="60">Up to 60 pages</option>
-      </select>
-      <span class="opt-note">Deeper crawls are more thorough but slower and likelier to hit free-proxy rate limits.</span>
-    </div>
-    <div class="hint">Reads title, meta, headings, keywords, structured data &amp; links → scores SEO &amp; GEO → drafts actions. Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> (starts with <code>AIza</code>). The key never leaves your browser.</div>
-  </section>
-
-  <div id="status"></div>
-
-  <!-- crawl loader: a head-scratching robot inside a progress ring (shown while working) -->
-  <div id="crawlbot" aria-live="polite">
-    <div class="cb-spot"></div>
-    <div class="cb-inner">
-      <div class="cb-left">
-        <div class="cb-eyebrow"><span class="cb-dot"></span> Working on it</div>
-        <div class="cb-title" id="cbTitle">Scanning your site…</div>
-        <div class="cb-sub" id="cbSub">Reaching the page through a public reader.</div>
-      </div>
-      <div class="cb-right">
-        <div class="cb-stage">
-          <div class="cb-ringwrap">
-            <svg class="cb-ring" viewBox="0 0 200 200" aria-hidden="true">
-              <circle cx="100" cy="100" r="86" fill="none" stroke="rgba(61,220,132,.15)" stroke-width="7"/>
-              <circle class="ring-prog" cx="100" cy="100" r="86" fill="none" stroke="#3DDC84" stroke-width="7" stroke-linecap="round" transform="rotate(-90 100 100)" stroke-dasharray="540.354" stroke-dashoffset="540.354"/>
-            </svg>
-          </div>
-          <div class="cb-botwrap">
-            <svg class="bot" viewBox="0 0 220 240" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="r-metal" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#FDFEFD"/><stop offset="0.45" stop-color="#E9EEEA"/><stop offset="1" stop-color="#C4CEC6"/>
-                </linearGradient>
-                <linearGradient id="r-side" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#E4EAE5"/><stop offset="1" stop-color="#B0BAB2"/>
-                </linearGradient>
-                <radialGradient id="r-visor" cx="0.5" cy="0.32" r="0.8">
-                  <stop offset="0" stop-color="#18291F"/><stop offset="1" stop-color="#05130E"/>
-                </radialGradient>
-                <radialGradient id="r-eye" cx="0.5" cy="0.4" r="0.65">
-                  <stop offset="0" stop-color="#C6FFE0"/><stop offset="0.55" stop-color="#4CE48F"/><stop offset="1" stop-color="#22A45B"/>
-                </radialGradient>
-                <radialGradient id="r-glow" cx="0.5" cy="0.5" r="0.5">
-                  <stop offset="0" stop-color="#8CFFC2"/><stop offset="1" stop-color="rgba(61,220,132,0)"/>
-                </radialGradient>
-                <linearGradient id="r-hi" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#ffffff" stop-opacity="0.9"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
-                </linearGradient>
-                <filter id="r-soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5"/></filter>
-              </defs>
-              <ellipse class="bot-shadow" cx="110" cy="228" rx="50" ry="9" fill="#0c130f" filter="url(#r-soft)" opacity="0.35"/>
-              <g class="bot-float">
-                <g transform="rotate(11 78 152)">
-                  <rect x="72" y="150" width="13" height="46" rx="6.5" fill="url(#r-side)"/>
-                  <circle cx="78.5" cy="198" r="9" fill="url(#r-metal)"/>
-                </g>
-                <rect x="70" y="128" width="80" height="72" rx="26" fill="url(#r-metal)" stroke="#B3BDB5" stroke-width="1"/>
-                <rect x="99" y="112" width="22" height="20" rx="7" fill="url(#r-side)"/>
-                <circle class="bot-pulse" cx="110" cy="162" r="9" fill="url(#r-glow)"/>
-                <circle cx="110" cy="162" r="4" fill="#3DDC84"/>
-                <g class="bot-tilt">
-                  <line x1="110" y1="60" x2="110" y2="46" stroke="#B6C0B8" stroke-width="4" stroke-linecap="round"/>
-                  <circle class="bot-pulse" cx="110" cy="42" r="7.5" fill="url(#r-glow)"/>
-                  <circle cx="110" cy="42" r="3.6" fill="#5FE0A1"/>
-                  <rect x="72" y="58" width="76" height="58" rx="24" fill="url(#r-metal)" stroke="#B3BDB5" stroke-width="1"/>
-                  <ellipse cx="100" cy="72" rx="26" ry="9" fill="url(#r-hi)" opacity="0.7"/>
-                  <rect x="80" y="72" width="60" height="34" rx="17" fill="url(#r-visor)"/>
-                  <path d="M84 82 Q92 74 112 75" stroke="#ffffff" stroke-opacity="0.18" stroke-width="3" fill="none" stroke-linecap="round"/>
-                  <ellipse class="bot-eye" cx="99" cy="90" rx="6.2" ry="8.4" fill="url(#r-eye)"/>
-                  <ellipse class="bot-eye" cx="122" cy="90" rx="6.2" ry="8.4" fill="url(#r-eye)"/>
-                  <circle cx="101" cy="87" r="1.7" fill="#eafff3"/>
-                  <circle cx="124" cy="87" r="1.7" fill="#eafff3"/>
-                  <path d="M100 103 q5 4 12 0" stroke="#3DDC84" stroke-width="2.4" fill="none" stroke-linecap="round" opacity="0.8"/>
-                </g>
-                <g class="bot-scratch">
-                  <rect x="140" y="70" width="13" height="64" rx="6.5" fill="url(#r-side)"/>
-                  <circle cx="146.5" cy="66" r="9.5" fill="url(#r-metal)"/>
-                </g>
-                <text class="bot-q" x="160" y="54" font-family="Onest, system-ui, sans-serif" font-size="26" font-weight="700" fill="#3DDC84">?</text>
-              </g>
-            </svg>
-          </div>
-          <div class="cb-pct" id="cbPct">· · ·</div>
+      <section class="panel">
+        <div class="field">
+          <input id="url" type="url" placeholder="https://example.com" autocomplete="off" spellcheck="false" />
+          <button id="run">Run audit</button>
         </div>
+        <div class="keyrow">
+          <input id="gkey" type="password" placeholder="Gemini API key — stored in your browser only" autocomplete="off" spellcheck="false" />
+          <label class="show"><input id="gshow" type="checkbox" /> show</label>
+        </div>
+        <div class="optrow">
+          <label for="depth">Crawl</label>
+          <select id="depth">
+            <option value="1">This page only</option>
+            <option value="15" selected>Up to 15 pages</option>
+            <option value="30">Up to 30 pages</option>
+            <option value="60">Up to 60 pages</option>
+          </select>
+          <span class="opt-note">Deeper crawls are more thorough but slower and likelier to hit free-proxy rate limits.</span>
+        </div>
+        <div class="hint">Reads title, meta, headings, keywords, structured data &amp; links → scores SEO &amp; GEO → drafts actions. Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> (starts with <code>AIza</code>). The key never leaves your browser.</div>
+      </section>
+    </div>
+
+    <div class="hero-right">
+      <div class="robot-stage" id="robotStage">
+        <div class="robot-spot"></div>
+        <svg class="ringsvg" viewBox="0 0 300 300" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#3ddc84"/><stop offset="1" stop-color="#22d3ee"/>
+            </linearGradient>
+            <filter id="ring-glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5"/></filter>
+          </defs>
+          <circle cx="150" cy="150" r="132" fill="none" stroke="rgba(150,200,175,.13)" stroke-width="7"/>
+          <circle class="ring-prog2 rg-glow" cx="150" cy="150" r="132" fill="none" stroke="url(#ring-grad)" stroke-width="10" stroke-linecap="round" transform="rotate(-90 150 150)" stroke-dasharray="829.38" stroke-dashoffset="829.38" filter="url(#ring-glow)" opacity="0.55"/>
+          <circle class="ring-prog2" cx="150" cy="150" r="132" fill="none" stroke="url(#ring-grad)" stroke-width="9" stroke-linecap="round" transform="rotate(-90 150 150)" stroke-dasharray="829.38" stroke-dashoffset="829.38"/>
+        </svg>
+        <svg class="robot" id="robot" viewBox="0 0 300 340" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="g-body" x1="0.15" y1="0" x2="0.85" y2="1"><stop offset="0" stop-color="#4a5158"/><stop offset="0.5" stop-color="#191e22"/><stop offset="1" stop-color="#05070a"/></linearGradient>
+            <linearGradient id="g-head" x1="0.2" y1="0.05" x2="0.8" y2="1"><stop offset="0" stop-color="#5a626a"/><stop offset="0.55" stop-color="#161b20"/><stop offset="1" stop-color="#06080b"/></linearGradient>
+            <linearGradient id="g-visor" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#0c141a"/><stop offset="1" stop-color="#02060a"/></linearGradient>
+            <linearGradient id="g-arm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#434a51"/><stop offset="1" stop-color="#0a0d10"/></linearGradient>
+            <radialGradient id="g-eye" cx="0.5" cy="0.45" r="0.55"><stop offset="0" stop-color="#d2ffe8"/><stop offset="0.5" stop-color="#3ddc84"/><stop offset="1" stop-color="rgba(61,220,132,0)"/></radialGradient>
+            <radialGradient id="g-core" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#9dffcb"/><stop offset="1" stop-color="rgba(61,220,132,0)"/></radialGradient>
+            <linearGradient id="g-spec" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0.8"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
+            <filter id="f-soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7"/></filter>
+            <filter id="f-blur2"><feGaussianBlur stdDeviation="2.4"/></filter>
+          </defs>
+          <ellipse class="r-shadow" cx="150" cy="326" rx="92" ry="13" fill="#020403" opacity="0.42" filter="url(#f-soft)"/>
+          <g class="r-float">
+            <g class="r-arm-rest">
+              <path d="M84 198 q-28 22 -22 66 q2 20 16 30" fill="none" stroke="url(#g-arm)" stroke-width="26" stroke-linecap="round"/>
+              <circle cx="80" cy="296" r="16" fill="url(#g-arm)"/>
+              <path d="M216 198 q28 22 22 66 q-2 20 -16 30" fill="none" stroke="url(#g-arm)" stroke-width="26" stroke-linecap="round"/>
+              <circle cx="220" cy="296" r="16" fill="url(#g-arm)"/>
+            </g>
+            <path d="M78 196 Q76 176 96 172 L204 172 Q224 176 222 196 L206 300 Q202 316 186 316 L114 316 Q98 316 94 300 Z" fill="url(#g-body)" stroke="#0a0e10" stroke-width="1"/>
+            <path d="M96 173 Q78 176 79 197 L92 292" fill="none" stroke="#A9F0C8" stroke-opacity="0.32" stroke-width="2.5" stroke-linecap="round"/>
+            <ellipse cx="92" cy="190" rx="26" ry="22" fill="url(#g-body)"/>
+            <ellipse cx="208" cy="190" rx="26" ry="22" fill="url(#g-body)"/>
+            <line x1="150" y1="196" x2="150" y2="252" stroke="#000" stroke-opacity="0.3" stroke-width="2"/>
+            <circle class="r-core" cx="150" cy="232" r="15" fill="url(#g-core)"/>
+            <circle cx="150" cy="232" r="5.5" fill="#3ddc84"/>
+            <path d="M136 150 L164 150 L160 176 L140 176 Z" fill="url(#g-arm)"/>
+            <g class="r-head">
+              <path d="M150 58 Q198 58 198 106 Q198 150 150 154 Q102 150 102 106 Q102 58 150 58 Z" fill="url(#g-head)" stroke="#0a0e11" stroke-width="1"/>
+              <ellipse cx="100" cy="108" rx="9" ry="16" fill="url(#g-arm)"/>
+              <ellipse cx="200" cy="108" rx="9" ry="16" fill="url(#g-arm)"/>
+              <path d="M150 59 Q196 60 197 104" fill="none" stroke="#B6F3D2" stroke-opacity="0.5" stroke-width="2.6" stroke-linecap="round"/>
+              <ellipse cx="128" cy="82" rx="26" ry="13" fill="url(#g-spec)" opacity="0.55" transform="rotate(-24 128 82)" filter="url(#f-blur2)"/>
+              <path d="M118 92 Q150 84 182 92 Q186 108 182 122 Q150 132 118 122 Q114 108 118 92 Z" fill="url(#g-visor)"/>
+              <path d="M122 98 Q140 92 168 95" stroke="#ffffff" stroke-opacity="0.12" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <g class="r-eyes">
+                <ellipse class="r-eye" cx="136" cy="107" rx="8" ry="9.5" fill="url(#g-eye)"/>
+                <ellipse class="r-eye" cx="164" cy="107" rx="8" ry="9.5" fill="url(#g-eye)"/>
+                <circle cx="138" cy="104" r="2" fill="#f2fff8"/>
+                <circle cx="166" cy="104" r="2" fill="#f2fff8"/>
+                <g fill="#3ddc84" opacity="0.5"><circle cx="141" cy="121" r="1.3"/><circle cx="147" cy="121" r="1.3"/><circle cx="153" cy="121" r="1.3"/><circle cx="159" cy="121" r="1.3"/></g>
+              </g>
+            </g>
+            <g class="r-arm-raised">
+              <path d="M214 194 Q212 150 202 122" fill="none" stroke="url(#g-arm)" stroke-width="24" stroke-linecap="round"/>
+              <g class="r-forearm">
+                <path d="M202 122 Q190 100 176 88" fill="none" stroke="url(#g-arm)" stroke-width="22" stroke-linecap="round"/>
+                <circle cx="174" cy="86" r="15" fill="url(#g-arm)"/>
+                <g stroke="#0a0d10" stroke-width="2.4" stroke-linecap="round"><line x1="167" y1="80" x2="163" y2="71"/><line x1="175" y1="78" x2="173" y2="68"/><line x1="183" y1="80" x2="184" y2="70"/></g>
+              </g>
+            </g>
+          </g>
+        </svg>
+        <div class="robot-pct" id="robotPct"></div>
+        <div class="robot-cap" id="robotCap"></div>
       </div>
     </div>
   </div>
+</section>
+
+<div class="wrap">
+
+  <div id="status"></div>
 
   <div id="console" aria-live="polite">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="cap">signal — live audit</span></div>
@@ -513,17 +519,44 @@ async function conType(text, cls="t-cmd"){
   return d;
 }
 
-/* ---------- crawl loader: the head-scratching robot + progress ring ---------- */
-const RING_C = 2*Math.PI*86; // circumference of the r=86 progress ring
-function botShow(){ const c=$("#crawlbot"); if(c) c.style.display="block"; }
-function botHide(){ const c=$("#crawlbot"); if(c) c.style.display="none"; const r=$(".cb-right"); if(r) r.classList.remove("indet"); }
-function botStatus(title, sub){ const t=$("#cbTitle"), s=$("#cbSub"); if(t&&title!=null) t.textContent=title; if(s&&sub!=null) s.textContent=sub; }
+/* ---------- the hero robot: follows the cursor when idle, scratches + shows a
+   progress ring while an audit runs. botShow/botHide toggle the busy state. ---------- */
+const RING_C2 = 2*Math.PI*132; // circumference of the r=132 progress ring
+let robotBusy = false;
+function botShow(){ robotBusy=true; const r=$("#robot"); if(r) r.classList.add("busy"); const s=$("#robotStage"); if(s) s.classList.add("busy"); }
+function botHide(){ robotBusy=false; const r=$("#robot"); if(r) r.classList.remove("busy"); const s=$("#robotStage"); if(s){ s.classList.remove("busy"); s.classList.remove("indet"); } }
+function botStatus(title, sub){ const c=$("#robotCap"); if(c) c.textContent = title ? (title + (sub? " · "+sub : "")) : ""; }
 function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) ring
-  const prog=$(".ring-prog"), right=$(".cb-right"), pct=$("#cbPct");
-  if(!prog||!right) return;
-  if(frac==null){ right.classList.add("indet"); prog.style.strokeDashoffset=(RING_C*(1-0.28)).toFixed(1); if(pct) pct.textContent="· · ·"; }
-  else { right.classList.remove("indet"); const f=Math.max(0,Math.min(1,frac)); prog.style.strokeDashoffset=(RING_C*(1-f)).toFixed(1); if(pct) pct.textContent=Math.round(f*100)+"%"; }
+  const stage=$("#robotStage"), pct=$("#robotPct"); const arcs=document.querySelectorAll(".ring-prog2");
+  if(!stage) return;
+  if(frac==null){ stage.classList.add("indet"); arcs.forEach(p=>p.style.strokeDashoffset=(RING_C2*(1-0.3)).toFixed(1)); if(pct) pct.textContent=""; }
+  else { stage.classList.remove("indet"); const f=Math.max(0,Math.min(1,frac)); arcs.forEach(p=>p.style.strokeDashoffset=(RING_C2*(1-f)).toFixed(1)); if(pct) pct.textContent=Math.round(f*100)+"%"; }
 }
+
+/* cursor tracking — the head/eyes lean toward the pointer when idle; frozen while busy */
+(function robotTracker(){
+  const robot=document.getElementById("robot"), stage=document.getElementById("robotStage");
+  if(!robot||!stage) return;
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(reduce) return;
+  let tx=0, ty=0, cx=0, cy=0;
+  window.addEventListener("mousemove", e=>{
+    const r=stage.getBoundingClientRect(); if(!r.width) return;
+    tx=Math.max(-1,Math.min(1,(e.clientX-(r.left+r.width/2))/(r.width*0.62)));
+    ty=Math.max(-1,Math.min(1,(e.clientY-(r.top+r.height/2))/(r.height*0.62)));
+  }, {passive:true});
+  window.addEventListener("mouseleave", ()=>{ tx=0; ty=0; });
+  (function loop(){
+    const gx = robotBusy?0:tx, gy = robotBusy?0:ty;
+    cx+=(gx-cx)*0.09; cy+=(gy-cy)*0.09;
+    robot.style.setProperty("--hx",(cx*11).toFixed(2)+"px");
+    robot.style.setProperty("--hy",(cy*8).toFixed(2)+"px");
+    robot.style.setProperty("--hr",(cx*6).toFixed(2)+"deg");
+    robot.style.setProperty("--ex",(cx*5).toFixed(2)+"px");
+    robot.style.setProperty("--ey",(cy*4).toFixed(2)+"px");
+    requestAnimationFrame(loop);
+  })();
+})();
 
 /* ---------- read the page through a hosted reader (no backend) ---------- */
 function looksUsable(t, mode){
