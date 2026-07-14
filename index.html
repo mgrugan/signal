@@ -192,6 +192,17 @@
   .actions .ah{font-size:12.5px;color:var(--slate);margin-top:5px;line-height:1.45}
   .actions .ah b{color:var(--ink);font-family:var(--mono);font-weight:700;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-right:7px}
 
+  /* ---- breakdown intro + generated files ---- */
+  .bd-intro{font-size:13.5px;color:var(--slate);margin:0 0 16px;max-width:60ch}
+  .genfile{margin-top:18px}
+  .genfile .gh{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+  .genfile .gt{font-family:var(--mono);font-size:13px;color:var(--ink);font-weight:700}
+  .genfile pre{margin:0;background:#0A100D;color:#d6e4d8;border:1px solid var(--hair);border-radius:8px;
+    padding:14px 16px;overflow:auto;font-family:var(--mono);font-size:12px;line-height:1.55;max-height:360px;white-space:pre}
+  .genfile .gb{font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;
+    padding:6px 13px;border:1px solid var(--hair);background:var(--panel-solid);color:var(--ink);cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+  .genfile .gb:hover{background:var(--net);border-color:var(--net);color:#fff}
+
   /* ---- site crawl dashboard ---- */
   .statgrid{display:grid;grid-template-columns:repeat(4,1fr);border:1.5px solid var(--ink);border-bottom:0;margin:6px 0 18px}
   .stat{padding:16px 18px;border-right:1px solid var(--hair);border-bottom:1.5px solid var(--hair)}
@@ -338,6 +349,25 @@ function normUrl(u){ try{ const x=new URL(u); x.hash=""; const s=x.pathname.repl
 function pathOf(u){ try{ const x=new URL(u); return (x.pathname||"/")+(x.search||"")||"/"; }catch(e){ return u; } }
 const SKIP_EXT = /\.(pdf|jpe?g|png|gif|webp|svg|ico|css|js|json|xml|rss|zip|gz|mp4|mp3|wav|mov|avi|woff2?|ttf|eot|doc|docx|xls|xlsx|ppt|pptx|csv|dmg|exe)(\?|#|$)/i;
 
+// Individual news / blog / press stories — skipped during crawl so we don't rack up
+// page views on a publisher's article analytics. Section landing pages (/news, /blog)
+// are still crawled; only URLs with a story slug (or a dated permalink) under them are skipped.
+const ARTICLE_RE = /\/(news|press|press-releases?|media|blog|article|articles|story|stories|posts?|updates?|newsroom|insights?)\/[^/]+\/?$|\/(19|20)\d\d\/\d{1,2}\/|\/\d{4,}\//i;
+const isArticleUrl = u => { try{ return ARTICLE_RE.test(new URL(u).pathname); }catch(e){ return false; } };
+
+// AI answer-engine crawlers we check robots.txt for.
+const AI_BOTS = ["gptbot","oai-searchbot","chatgpt-user","google-extended","perplexitybot","claudebot","anthropic-ai","claude-web","ccbot","applebot-extended","bytespider","cohere-ai","meta-externalagent","amazonbot"];
+
+const hasAny = (set, arr) => arr.some(x=>set.has(x));
+// Recursively collect every @type in a JSON-LD tree (handles arrays and @graph).
+function collectLdTypes(obj, set){
+  if(!obj || typeof obj!=="object") return;
+  if(Array.isArray(obj)){ obj.forEach(o=>collectLdTypes(o,set)); return; }
+  const t = obj["@type"]; if(t){ (Array.isArray(t)?t:[t]).forEach(x=>set.add(String(x).toLowerCase())); }
+  if(obj["@graph"]) collectLdTypes(obj["@graph"], set);
+  for(const k in obj){ const v=obj[k]; if(v && typeof v==="object") collectLdTypes(v,set); }
+}
+
 function setStatus(msg, busy=true){
   $("#status").innerHTML = msg ? (busy?'<span class="dot"></span>':'') + esc(msg) : "";
 }
@@ -399,10 +429,11 @@ async function crawlSite(entryUrl, entrySeo, maxPages){
   const host = hostOf(entryUrl);
   const seen = new Set([normUrl(entryUrl)]);
   const pages = [{ url:entryUrl, seo:entrySeo, score:scoreSEO(entrySeo) }];
-  let frontier = [];
-  const enqueue = list => { for(const l of (list||[])){ const n=normUrl(l); if(!seen.has(n) && hostOf(l)===host){ seen.add(n); frontier.push(l); } } };
+  let frontier = [], skippedArticles = 0;
+  // Skip individual news/blog stories so we don't rack up views on their analytics.
+  const enqueue = list => { for(const l of (list||[])){ const n=normUrl(l); if(seen.has(n) || hostOf(l)!==host) continue; seen.add(n); if(isArticleUrl(l)){ skippedArticles++; continue; } frontier.push(l); } };
   enqueue(entrySeo.internalLinks);
-  if(!frontier.length){ conLine("  • no crawlable internal links found — auditing this page only", "t-warn"); return pages; }
+  if(!frontier.length){ conLine("  • no crawlable structural links found — auditing this page only", "t-warn"); return pages; }
   conLine("Crawling site — target "+maxPages+" pages · "+frontier.length+" links queued …", "t-net");
   const CONC = 4;
   while(pages.length < maxPages && frontier.length){
@@ -423,6 +454,7 @@ async function crawlSite(entryUrl, entrySeo, maxPages){
     }
     if(pages.length < maxPages && frontier.length) await sleepMs(120); // be polite to free proxies
   }
+  if(skippedArticles) conLine("  • skipped "+skippedArticles+" news/blog story URL"+(skippedArticles===1?"":"s")+" (won't touch their view analytics)", "t-dim");
   return pages;
 }
 
@@ -460,7 +492,10 @@ function extractSEO(html, url, mode){
     const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).filter(([k])=>k.length>3).slice(0,12).map(([k])=>k);
     return {url, title:tm?tm[1].trim():"", desc:"", canon:"", viewport:null, lang:"", robots:"",
       h1:[], h2:[], h3:[], imgCount:0, altCoverage:null, structured:null, og:null,
-      internal:null, external:null, internalLinks:[], wordCount:words.length, topTerms:top, partial:true};
+      internal:null, external:null, internalLinks:[], wordCount:words.length, topTerms:top, partial:true,
+      schemaCount:0, hasOrg:false, hasArticleSchema:false, hasQaSchema:false, hasPersonSchema:false, hasSameAs:false,
+      dateVal:null, qHeadings:0, hasFAQ:false, listCount:0, liCount:0, tableCount:0, semantic:false,
+      statDensity:0, hasSummaryCue:false, hasAuthor:false};
   }
   const doc = new DOMParser().parseFromString(html, "text/html");
   const get = (sel,attr) => { const el=doc.querySelector(sel); return el?(attr?el.getAttribute(attr):el.textContent.trim()):""; };
@@ -483,6 +518,29 @@ function extractSEO(html, url, mode){
   const ld = [...doc.querySelectorAll('script[type="application/ld+json"]')];
   const og = !!doc.querySelector('meta[property^="og:"]');
 
+  // ---- GEO signals (for the deterministic GEO score) ----
+  const ldTypes = new Set(); let ldRaw = "";
+  ld.forEach(n=>{ ldRaw += " " + n.textContent; try{ collectLdTypes(JSON.parse(n.textContent), ldTypes); }catch(e){} });
+  const hasOrg = hasAny(ldTypes,["organization","localbusiness","ngo","corporation","website","onlinestore","governmentorganization","educationalorganization"]);
+  const hasArticleSchema = hasAny(ldTypes,["article","blogposting","newsarticle","webpage","aboutpage","collectionpage","techarticle"]);
+  const hasQaSchema = hasAny(ldTypes,["faqpage","qapage","howto"]);
+  const hasPersonSchema = ldTypes.has("person");
+  const hasSameAs = /"sameAs"/i.test(ldRaw) || !!doc.querySelector('a[rel~="me"]');
+  // best content date from schema / article meta / <time>
+  let dateVal = null;
+  const dm = ldRaw.match(/"date(?:Modified|Published)"\s*:\s*"([^"]+)"/);
+  if(dm) dateVal = Date.parse(dm[1]) || null;
+  if(!dateVal){ const mt = doc.querySelector('meta[property="article:modified_time"],meta[property="article:published_time"]'); if(mt) dateVal = Date.parse(mt.getAttribute("content")||"") || null; }
+  if(!dateVal){ const tm = doc.querySelector('time[datetime]'); if(tm) dateVal = Date.parse(tm.getAttribute("datetime")||"") || null; }
+  // question-form headings + FAQ presence
+  const qHeadings = [...h1,...h2,...h3].filter(t=>/\?\s*$/.test(t)).length;
+  const hasFAQ = hasQaSchema || /frequently asked questions|(^|\s)faqs?(\s|$)/i.test([...h2,...h3].join(" "));
+  // extractable formatting
+  const listCount = doc.querySelectorAll("ul,ol").length;
+  const liCount = doc.querySelectorAll("li").length;
+  const tableCount = doc.querySelectorAll("table").length;
+  const semantic = !!doc.querySelector("article,main");
+
   // host for internal/external link split (+ collect crawlable internal URLs)
   const host = hostOf(url);
   const links = [...doc.querySelectorAll("a[href]")].map(a=>a.getAttribute("href"));
@@ -504,6 +562,12 @@ function extractSEO(html, url, mode){
   const words = text.toLowerCase().match(/[a-z][a-z'-]{1,}/g) || [];
   const wordCount = words.length;
 
+  // GEO text signals: fact/statistic density, direct-answer cue, author byline
+  const statMatches = text.match(/(\$\s?\d[\d,\.]*)|(\b\d[\d,\.]*\s?(?:%|percent|million|billion|thousand|users|customers|patients|acres|miles|years))|(\b\d{1,3}(?:,\d{3})+\b)|(\b(?:19|20)\d\d\b)/gi) || [];
+  const statDensity = wordCount ? statMatches.length/(wordCount/100) : 0;  // stats per 100 words
+  const hasSummaryCue = /\b(in summary|tl;dr|key takeaways?|in short|at a glance|the bottom line|overview:|in brief)\b/i.test(text.slice(0,6000)) || (desc||"").length>0;
+  const hasAuthor = !!doc.querySelector('meta[name="author"],[rel~="author"]') || hasPersonSchema || /"author"\s*:/.test(ldRaw) || /\bby\s+[A-Z][a-z]+\s+[A-Z][a-z]+/.test(text.slice(0,4000));
+
   // unigrams + bigrams
   const freq = {};
   const clean = words.filter(w=>!STOP.has(w) && w.length>2);
@@ -514,7 +578,11 @@ function extractSEO(html, url, mode){
 
   return {url,title,desc,canon,viewport,lang,robots,h1,h2,h3,
     imgCount:imgs.length,altCoverage,structured:ld.length>0,og,
-    internal,external,internalLinks,wordCount,topTerms:top};
+    internal,external,internalLinks,wordCount,topTerms:top,
+    // GEO signals
+    schemaCount:ldTypes.size, hasOrg, hasArticleSchema, hasQaSchema, hasPersonSchema, hasSameAs,
+    dateVal, qHeadings, hasFAQ, listCount, liCount, tableCount, semantic,
+    statDensity, hasSummaryCue, hasAuthor};
 }
 
 /* ---------- transparent SEO score from real signals ---------- */
@@ -539,6 +607,150 @@ function scoreSEO(s){
   if(s.structured) n+=10;
   if(s.viewport) n+=5;
   return Math.max(0,Math.min(100,Math.round(n)));
+}
+
+/* ============================================================
+   DETERMINISTIC SCORING — SEO and GEO are both measured, not guessed.
+   Each returns per-dimension sub-scores so the report's readiness
+   breakdown is reproducible (same page → same rating every run).
+   ============================================================ */
+const ratingOf = (got,max) => { const r = max? got/max : 0; return r>=0.7?"strong":r>=0.4?"partial":"weak"; };
+
+// SEO dimensions (sum to 100, same points as scoreSEO)
+function seoDims(s){
+  if(s.partial){
+    const tl=(s.title||"").length;
+    return [
+      {label:"Title", got:s.title?((tl>=30&&tl<=65)?35:22):0, max:35, note:s.title?`${tl} chars`:"missing"},
+      {label:"Content depth", got:s.wordCount>=600?45:Math.round(45*Math.min(1,s.wordCount/600)), max:45, note:`${s.wordCount.toLocaleString()} words`},
+      {label:"Keyword richness", got:s.topTerms.length>=6?20:Math.round(20*s.topTerms.length/6), max:20, note:`${s.topTerms.length} key terms`}
+    ];
+  }
+  const tl=(s.title||"").length, dl=(s.desc||"").length, ac=(s.altCoverage==null?1:s.altCoverage);
+  const meta=(s.title?((tl>=30&&tl<=65)?20:12):0)+(s.desc?((dl>=70&&dl<=160)?15:9):0);
+  const head=(s.h1.length===1?10:(s.h1.length>1?5:0))+(s.h2.length>=2?10:(s.h2.length===1?5:0));
+  return [
+    {label:"Metadata & titles", got:meta, max:35, note:`title ${tl}ch · desc ${s.desc?dl+"ch":"missing"}`},
+    {label:"Heading structure", got:head, max:20, note:`${s.h1.length}×H1 · ${s.h2.length}×H2`},
+    {label:"Content depth", got:s.wordCount>=600?15:Math.round(15*Math.min(1,s.wordCount/600)), max:15, note:`${s.wordCount.toLocaleString()} words`},
+    {label:"Structured data", got:s.structured?10:0, max:10, note:s.structured?"JSON-LD present":"none"},
+    {label:"Media & alt text", got:Math.round(10*ac), max:10, note:`${Math.round(ac*100)}% alt of ${s.imgCount}`},
+    {label:"Technical", got:(s.canon?5:0)+(s.viewport?5:0), max:10, note:`${s.canon?"canonical":"no canonical"} · ${s.viewport?"viewport":"no viewport"}`}
+  ];
+}
+
+// GEO dimensions (sum to 100) — weighted to the Princeton/industry GEO findings:
+// statistics + citations, direct answers, FAQ/schema, freshness, crawler access.
+function geoDims(s, access){
+  const now = Date.now();
+  let sd=0; if(s.schemaCount){ sd+=5; if(s.hasOrg) sd+=4; if(s.hasArticleSchema) sd+=3; if(s.hasQaSchema) sd+=5; if(s.hasPersonSchema) sd+=3; } sd=Math.min(20,sd);
+  let ar=0; if(s.hasFAQ) ar+=7; ar+=Math.min(5,(s.qHeadings||0)*2.5); if(s.hasSummaryCue) ar+=6; ar=Math.min(18,Math.round(ar));
+  const statPts=Math.min(10, (s.statDensity||0)>=1?10:Math.round((s.statDensity||0)*10));
+  const citePts=Math.min(8, (s.external||0)>=5?8:Math.round((s.external||0)/5*8));
+  const fd=statPts+citePts;
+  let ex=0; ex+=Math.min(7,(s.listCount||0)*2+Math.floor((s.liCount||0)/8)); if(s.tableCount) ex+=5; ex=Math.min(12,ex);
+  let au=0; if(s.hasAuthor) au+=6; if(s.dateVal){ au+=6; const wks=(now-s.dateVal)/6048e5; if(wks<=13) au+=4; else if(wks<=52) au+=2; } au=Math.min(16,au);
+  let en=0; if(s.hasOrg) en+=4; if(s.hasSameAs) en+=4;
+  let ca=0; if(access){ ca += (access.allowsAI!==false) ? (access.robotsPresent?4:3) : 0; if(access.llmsPresent) ca+=4; }
+  return [
+    {label:"Structured data & schema", got:sd, max:20, note:s.schemaCount?`${s.schemaCount} schema type${s.schemaCount>1?"s":""}${s.hasQaSchema?" incl. FAQ/HowTo":s.hasOrg?" incl. Organization":""}`:"no JSON-LD"},
+    {label:"Answer-ready content", got:ar, max:18, note:`${s.hasFAQ?"FAQ present · ":""}${s.qHeadings||0} question heading${(s.qHeadings||0)===1?"":"s"}`},
+    {label:"Fact density & citations", got:fd, max:18, note:`${(s.statDensity||0).toFixed(1)} stats/100 words · ${s.external||0} outbound links`},
+    {label:"Extractable formatting", got:ex, max:12, note:`${s.listCount||0} lists · ${s.tableCount||0} tables`},
+    {label:"Authority & freshness", got:au, max:16, note:`${s.hasAuthor?"author":"no author"} · ${s.dateVal?"dated":"no date"}`},
+    {label:"Entity & brand clarity", got:en, max:8, agg:"max", note:`${s.hasOrg?"Organization schema":"no org schema"}${s.hasSameAs?" + sameAs":""}`},
+    {label:"AI crawler access", got:ca, max:8, agg:"max", note:access?`${access.robotsPresent?(access.allowsAI===false?"robots blocks AI bots":"robots allows AI"):"no robots.txt"} · ${access.llmsPresent?"llms.txt present":"no llms.txt"}`:"not checked"}
+  ];
+}
+
+// Average each dimension across crawled pages → site score + rated breakdown.
+function aggregateDims(pages, fn, access){
+  const per = pages.map(p=>fn(p.seo, access));
+  const n = per.length||1;
+  const dims = per[0].map((d,i)=>{
+    // per-page dimensions average across the crawl; site-level ones (entity, crawler
+    // access) take the best page — a site "has" an Organization entity if any page declares it.
+    const val = d.agg==="max" ? Math.max(...per.map(r=>r[i].got||0))
+                              : per.reduce((a,r)=>a+(r[i].got||0),0)/n;
+    const note = n>1 ? (d.agg==="max" ? `${Math.round(val)}/${d.max} · best page` : `avg ${Math.round(val)}/${d.max} across ${n} pages`) : d.note;
+    return { label:d.label, max:d.max, got:Math.round(val*10)/10, note, rating: ratingOf(val,d.max) };
+  });
+  return { dims, score: Math.max(0,Math.min(100,Math.round(dims.reduce((a,d)=>a+d.got,0)))) };
+}
+
+/* ---------- site-level: robots.txt / llms.txt for AI crawler access ---------- */
+async function fetchText(url){
+  for(const f of FETCHERS){
+    if(f.mode==="reader") continue;                 // want raw text, not markdownified
+    try{
+      const [u,opts]=f.build(url);
+      const r=await fetch(u,Object.assign({redirect:"follow"},opts));
+      if(!r.ok) continue;
+      let t=await r.text();
+      if(f.unwrap){ try{ t=f.unwrap(t); }catch(e){ continue; } }
+      if(t!=null) return t;
+    }catch(e){}
+  }
+  return null;
+}
+function parseRobotsAI(txt){
+  const lines = txt.split(/\r?\n/).map(l=>l.replace(/#.*/,"").trim()).filter(Boolean);
+  const groups=[]; let cur=null;
+  for(const l of lines){
+    const m=l.match(/^([\w-]+)\s*:\s*(.*)$/); if(!m) continue;
+    const k=m[1].toLowerCase(), v=m[2].trim();
+    if(k==="user-agent"){ if(!cur||cur.rules.length){ cur={uas:[],rules:[]}; groups.push(cur); } cur.uas.push(v.toLowerCase()); }
+    else if(cur&&(k==="disallow"||k==="allow")){ cur.rules.push({k,v}); }
+  }
+  const blocksRoot = g => g.rules.some(r=>r.k==="disallow"&&r.v==="/") && !g.rules.some(r=>r.k==="allow"&&r.v==="/");
+  let aiBlocked=false;
+  for(const g of groups){ if((g.uas.some(u=>AI_BOTS.includes(u))||g.uas.includes("*")) && blocksRoot(g)) aiBlocked=true; }
+  return !aiBlocked;
+}
+async function siteAccess(entryUrl){
+  let origin=""; try{ origin=new URL(entryUrl).origin; }catch(e){ return {robotsPresent:false, allowsAI:true, llmsPresent:false, origin:""}; }
+  const [robotsTxt, llmsTxt] = await Promise.all([ fetchText(origin+"/robots.txt"), fetchText(origin+"/llms.txt") ]);
+  const robotsReal = robotsTxt && /user-agent|disallow|sitemap/i.test(robotsTxt) && robotsTxt.length<20000;
+  const llmsPresent = !!(llmsTxt && llmsTxt.length>10 && !/<html/i.test(llmsTxt) && /(^|\n)#|\]\(/.test(llmsTxt));
+  return { origin, robotsPresent:!!robotsReal, allowsAI: robotsReal ? parseRobotsAI(robotsTxt) : true, llmsPresent };
+}
+
+/* ---------- generate robots.txt / llms.txt when the site is missing one ---------- */
+function genRobots(origin){
+  return `# robots.txt for ${origin}
+# Allow classic search + AI answer engines to read the whole site.
+User-agent: *
+Allow: /
+
+# AI answer-engine crawlers — explicitly welcomed so your pages can be cited.
+User-agent: GPTBot
+Allow: /
+User-agent: OAI-SearchBot
+Allow: /
+User-agent: Google-Extended
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+User-agent: ClaudeBot
+Allow: /
+User-agent: CCBot
+Allow: /
+
+Sitemap: ${origin}/sitemap.xml`;
+}
+function genLlms(name, desc, pages){
+  const list = pages.slice(0,20).map(p=>{
+    const t=((p.seo.title||pathOf(p.url)).split("|")[0].split("—")[0].trim()).slice(0,60);
+    const d=(p.seo.desc||"").slice(0,90);
+    return `- [${t}](${p.url})${d?": "+d:""}`;
+  }).join("\n");
+  return `# ${name||"Your site"}
+
+> ${desc||"One sentence describing what this site offers and who it's for."}
+
+## Key pages
+${list}
+`;
 }
 
 /* ---------- ask the AI answer engine (site-aware + resilient) ---------- */
@@ -567,12 +779,14 @@ function classifyAIError(e){
 }
 function aiError(e){ const c=classifyAIError(e); const err=new Error(c.message); err.hint=c.hint; err.code=c.code; return err; }
 
-function buildPrompt(s, seoScore, site){
+function buildPrompt(s, metrics, site){
   const ctx = {
     url:s.url, title:s.title, description:s.desc,
     h1:(s.h1||[]).slice(0,3), h2:(s.h2||[]).slice(0,8),
     word_count:s.wordCount, top_terms:s.topTerms,
-    has_structured_data:s.structured,
+    has_structured_data:s.structured, schema_types:s.schemaCount,
+    has_faq:s.hasFAQ, question_headings:s.qHeadings, stats_per_100w:+(s.statDensity||0).toFixed(1),
+    lists:s.listCount, tables:s.tableCount, has_author:s.hasAuthor, has_date:!!s.dateVal,
     image_alt_coverage:(s.altCoverage==null?null:+s.altCoverage.toFixed(2)),
     internal_links:s.internal, external_links:s.external,
     note:s.partial?"only title/text were readable; some HTML signals unavailable":undefined
@@ -597,42 +811,49 @@ ${JSON.stringify(sample)}`;
     scope = `This ${a.n}-page site`;
   }
 
+  // The scores and per-dimension ratings are ALREADY computed deterministically — the model
+  // must not invent scores. It writes the narrative + actions that match these measured gaps.
+  const weak = d => d.filter(x=>x.rating!=="strong").map(x=>`${x.label} (${x.rating}: ${x.note})`);
+  const measured = {
+    seo_score:metrics.seoScore, geo_score:metrics.geoScore,
+    weak_seo_dimensions:weak(metrics.seoDims), weak_geo_dimensions:weak(metrics.geoDims),
+    robots_txt: metrics.access ? (metrics.access.robotsPresent ? (metrics.access.allowsAI?"present, allows AI bots":"present, BLOCKS AI bots") : "missing") : "unknown",
+    llms_txt: metrics.access ? (metrics.access.llmsPresent?"present":"missing") : "unknown"
+  };
   const siteWide = site && site.pages.length>1;
+
   return `You are a senior SEO + GEO (Generative Engine Optimization / Answer Engine Optimization) consultant writing a client-ready audit. The entry page was scraped; here are its real signals:
-${JSON.stringify(ctx)}
+${JSON.stringify(ctx)}${siteBlock}
 
-Its measured SEO score is ${seoScore}/100.${siteBlock}
+The SEO and GEO scores are ALREADY measured deterministically — do NOT restate or invent scores. Here are the measured results and the specific weak areas to target:
+${JSON.stringify(measured)}
 
-${scope} is the subject. Judge from the crawl aggregates when present (recurring, site-wide gaps outweigh single-page issues).
+${scope} is the subject. Judge from the crawl aggregates when present (recurring, site-wide gaps outweigh single-page issues). Your actions must directly attack the weak dimensions listed above.
 
-Write like the reports Ahrefs / Semrush / Profound / Peec deliver: specific, concrete, and copy-pasteable. Every action must be doable today and name the exact thing to do — the schema type, the exact heading/FAQ wording, the exact tag — not vague advice. Ground GEO judgement in how LLM answer engines (ChatGPT, Google AI Overviews, Perplexity, Gemini) actually select and cite sources:
-- ANSWER-FIRST content: a direct 2-3 sentence answer at the top of a page/section, before elaboration.
+Write like the reports Ahrefs / Semrush / Profound / Peec deliver: specific, concrete, copy-pasteable. Every action names the exact thing to do — the schema type, the exact heading/FAQ wording, the exact tag. Ground GEO advice in how LLM answer engines actually select and cite sources:
+- ANSWER-FIRST content: a direct 2-3 sentence answer at the top of a page/section (44% of AI citations come from the first 30% of a page).
+- Fact density: add verifiable statistics, named entities and dates — roughly one every 100 words (the single biggest lever in the Princeton GEO study), each with a cited source link.
 - Q&A / FAQ blocks phrased as the exact questions people ask, with FAQPage schema.
-- Structured data: Organization (with sameAs to social/Wikipedia/Wikidata), Article (author + datePublished + dateModified), Person (author bios), FAQPage, HowTo, Product, BreadcrumbList.
-- Entity & brand clarity: a crisp About page, consistent naming, sameAs links.
-- E-E-A-T / authority: named authors with credentials, citations to primary sources, visible last-updated dates.
-- Extractable formatting: bullet lists, comparison tables, definitions, and cited statistics — the chunks LLMs quote.
-- Conversational headings phrased as natural questions.
-- Crawler access: robots.txt allowing GPTBot / Google-Extended / PerplexityBot / ClaudeBot, and an /llms.txt file.
+- Structured data: Organization (sameAs to social/Wikipedia/Wikidata), Article (author + datePublished + dateModified), Person, FAQPage, HowTo, BreadcrumbList.
+- E-E-A-T & freshness: named authors with credentials, citations to primary sources, visible last-updated dates (50% of AI-cited content is under 13 weeks old).
+- Extractable formatting: bullet lists, comparison tables, definitions — the chunks LLMs quote.
+Note: the tool already generates robots.txt / llms.txt for the user when missing, so only mention those if there is a specific nuance.
 
-Return ONLY valid JSON (no markdown, no backticks, no prose), EXACTLY this shape. Keep strings tight and concrete:
+Return ONLY valid JSON (no markdown, no backticks), EXACTLY this shape. Keep strings tight and concrete:
 {
  "topic":"primary topic & search intent, <=12 words",
  "audience":"who the site is for, <=10 words",
- "executive_summary":"2-3 plain-language sentences a busy owner understands: where the site stands for classic search AND for AI answers, and the single biggest opportunity",
+ "executive_summary":"2-3 plain-language sentences a busy owner understands: where the site stands for classic search AND for AI answers (reference the measured scores naturally), and the single biggest opportunity",
  "seo_summary":"one blunt sentence on classic-search readiness${siteWide?" across the crawled pages":""}",
- "geo_score":<integer 0-100: how likely AI answer engines surface/cite this site>,
  "geo_summary":"one blunt sentence on AI-answer readiness",
- "seo_breakdown":[{"dimension":"Metadata & titles|Heading structure|Content depth|Structured data|Internal linking|Indexability","rating":"strong|partial|weak","note":"<=16 words, cite the number when possible"}],
- "geo_breakdown":[{"dimension":"Answer-ready content|Q&A / FAQ coverage|Structured data for AI|Entity & brand clarity|Authority & trust (E-E-A-T)|Extractable formatting|AI crawler access","rating":"strong|partial|weak","note":"<=16 words"}],
  "quick_wins":[{"action":"the single most worth-it fix, specific","impact":"high|med","effort":"low|med"}],
  "related_queries":["6-8 real questions this audience types into Google or an AI"],
  "ai_simulations":[{"query":"one of the queries","ai_answer":"how an AI answer engine would actually respond, 2 sentences","would_cite":true|false,"why":"<=14 words on whether this site earns the citation"}],
- "seo_actions":[{"action":"imperative, specific fix","priority":"high|med|low","why":"<=12 words on the payoff","how":"exact steps or example wording to implement it, <=24 words"}],
+ "seo_actions":[{"action":"imperative, specific fix","priority":"high|med|low","why":"<=12 words on the payoff","how":"exact steps or example wording, <=24 words"}],
  "geo_actions":[{"action":"imperative, specific GEO fix","priority":"high|med|low","why":"<=12 words on the payoff","how":"exact steps, schema type, or example FAQ/heading wording, <=24 words"}]
 }
-Rules: seo_breakdown has 5-6 items, geo_breakdown has 6-7 items (one per named dimension). quick_wins has exactly 3 (highest impact, lowest effort first). ai_simulations has exactly 3 (the 3 highest-intent queries). seo_actions has 5-6 items; geo_actions has 6-8 items — hardest-hitting first. In every "how", be exact: name the schema type, the tag, or draft the actual FAQ question/heading text${siteWide?". Prefer fixes that apply site-wide (templates, patterns) over one-page tweaks":""}.
-JSON formatting: output one single valid JSON object. Put a comma between every array item and object property. Do not use a trailing comma. Inside any string value, use single quotes for quoted text — never an unescaped double quote — and keep each value on one line.`;
+Rules: quick_wins has exactly 3 (highest impact, lowest effort first). ai_simulations has exactly 3 (the 3 highest-intent queries). seo_actions has 5-6 items; geo_actions has 6-8 items — hardest-hitting first, targeting the weak dimensions. In every "how", be exact: name the schema type, the tag, or draft the actual FAQ question/heading text${siteWide?". Prefer fixes that apply site-wide (templates, patterns) over one-page tweaks":""}.
+JSON formatting: one valid JSON object, comma between every item, no trailing comma, single quotes for any quoted text inside a value (never an unescaped double quote), each value on one line.`;
 }
 
 // Close any strings/brackets a truncated response left open, so it still parses.
@@ -680,17 +901,14 @@ const STR = { type:"STRING" };
 const AI_SCHEMA = {
   type:"OBJECT",
   properties:{
-    topic:STR, audience:STR, executive_summary:STR, seo_summary:STR,
-    geo_score:{ type:"INTEGER" }, geo_summary:STR,
-    seo_breakdown:{ type:"ARRAY", items:ITEM({dimension:STR, rating:STR, note:STR}, ["dimension","rating","note"]) },
-    geo_breakdown:{ type:"ARRAY", items:ITEM({dimension:STR, rating:STR, note:STR}, ["dimension","rating","note"]) },
+    topic:STR, audience:STR, executive_summary:STR, seo_summary:STR, geo_summary:STR,
     quick_wins:{ type:"ARRAY", items:ITEM({action:STR, impact:STR, effort:STR}, ["action","impact","effort"]) },
     related_queries:{ type:"ARRAY", items:STR },
     ai_simulations:{ type:"ARRAY", items:ITEM({query:STR, ai_answer:STR, would_cite:{type:"BOOLEAN"}, why:STR}, ["query","ai_answer","would_cite","why"]) },
     seo_actions:{ type:"ARRAY", items:ITEM({action:STR, priority:STR, why:STR, how:STR}, ["action","priority","why","how"]) },
     geo_actions:{ type:"ARRAY", items:ITEM({action:STR, priority:STR, why:STR, how:STR}, ["action","priority","why","how"]) }
   },
-  required:["topic","executive_summary","seo_summary","geo_score","geo_summary","seo_breakdown","geo_breakdown","quick_wins","related_queries","ai_simulations","seo_actions","geo_actions"]
+  required:["topic","executive_summary","seo_summary","geo_summary","quick_wins","related_queries","ai_simulations","seo_actions","geo_actions"]
 };
 
 async function geminiOnce(model, prompt, key){
@@ -709,8 +927,8 @@ async function geminiOnce(model, prompt, key){
   return raw;
 }
 
-async function callAI(s, seoScore, site){
-  const prompt = buildPrompt(s, seoScore, site);
+async function callAI(s, metrics, site){
+  const prompt = buildPrompt(s, metrics, site);
   const key = getKey();
   let raw = null;
 
@@ -795,7 +1013,9 @@ function crawlDashboard(site){
   return statgrid + table + terms;
 }
 
-function render(s, seoScore, ai, site, aiErr){
+function render(D){
+  const s = D.seo, site = D.site, ai = D.ai, aiErr = D.aiErr;
+  const seoScore = D.seoScore, geoScore = D.geoScore;
   const date = new Date().toLocaleString(undefined,{dateStyle:"medium",timeStyle:"short"});
   const tl=(s.title||"").length, dl=(s.desc||"").length;
   const multi = site && site.pages && site.pages.length>1;
@@ -827,10 +1047,10 @@ function render(s, seoScore, ai, site, aiErr){
       <div><div class="at">${esc(a.action)}</div><div class="aw">${esc(a.why)}</div>
       ${a.how?`<div class="ah"><b>How</b>${esc(a.how)}</div>`:""}</div></li>`).join("")}</ul>`;
 
-  // readiness breakdown rows (dimension · rating pill · note)
+  // readiness breakdown rows (dimension · rating pill · measured note)
   const rate = r => { const k = r==="strong"?"strong":r==="weak"?"weak":"partial"; return `<span class="rate ${k}">${esc(r||"partial")}</span>`; };
   const breakdown = items => `<div class="bd">${(items||[]).map(d=>`
-    <div class="bd-row"><div class="bd-dim">${esc(d.dimension)}</div>${rate(d.rating)}<div class="bd-note">${esc(d.note)}</div></div>`).join("")}</div>`;
+    <div class="bd-row"><div class="bd-dim">${esc(d.label)}</div>${rate(d.rating)}<div class="bd-note">${esc(d.note)}</div></div>`).join("")}</div>`;
   // quick-win cards
   const qwins = items => `<div class="qwins">${(items||[]).slice(0,3).map((q,i)=>`
     <div class="qwin"><div class="qn">Quick win ${String(i+1).padStart(2,"0")}</div>
@@ -841,12 +1061,7 @@ function render(s, seoScore, ai, site, aiErr){
     ? `<div class="exec"><div class="lbl">Executive summary${ai.audience?` · for ${esc(ai.audience)}`:""}</div><p>${esc(ai.executive_summary)}</p></div>`
     : "";
 
-  // ----- measured (always available) header + scores -----
-  const geoCell = ai ? `<div class="num">${ai.geo_score}<small>/100</small></div>
-        <div class="one">${esc(ai.geo_summary)}</div>`
-    : `<div class="num" style="color:var(--slate)">—</div>
-        <div class="one" style="color:var(--warn)">AI engine busy — measured crawl is ready below. Retry the AI read when you like.</div>`;
-
+  // ----- header + scores (both scores now measured deterministically) -----
   const head = `
     <div class="rpt-head">
       <div class="rpt-url">${esc(s.url)}${multi?` · <span style="color:var(--slate)">${site.pages.length} pages crawled</span>`:""}</div>
@@ -856,27 +1071,28 @@ function render(s, seoScore, ai, site, aiErr){
 
     <div class="scores">
       <div class="score s"><div class="lbl">SEO · classic search${multi?" · site avg":""}</div>
-        <div class="num">${multi?site.agg.avgScore:seoScore}<small>/100</small></div>
-        <div class="one">${ai?esc(ai.seo_summary):(multi?`Averaged across ${site.agg.n} crawled pages. Entry page scores ${seoScore}/100.`:"Measured from the page's real search signals.")}</div></div>
-      <div class="score g"><div class="lbl">GEO · AI answer engines</div>
-        ${geoCell}</div>
+        <div class="num">${seoScore}<small>/100</small></div>
+        <div class="one">${ai?esc(ai.seo_summary):(multi?`Averaged across ${site.agg.n} crawled pages.`:"Measured from the page's real search signals.")}</div></div>
+      <div class="score g"><div class="lbl">GEO · AI answer engines${multi?" · site avg":""}</div>
+        <div class="num">${geoScore}<small>/100</small></div>
+        <div class="one">${ai?esc(ai.geo_summary):"Measured from AI-answer readiness: schema, FAQs, fact density, freshness, crawler access."}</div></div>
     </div>`;
 
   // ----- sections -----
   let body = "";
 
-  // AI insight first (the "so what"), then the measured evidence
-  if(ai && (ai.geo_breakdown || ai.seo_breakdown)){
-    body += `
+  // Readiness breakdown — deterministic, always shown (even if the AI read is busy)
+  body += `
     <section class="section">
       <div class="kicker g">${nn()} — how ready you are, dimension by dimension</div>
       <h2>Readiness breakdown</h2>
-      <div class="col-head g">GEO · AI answer engines</div>
-      ${breakdown(ai.geo_breakdown)}
-      <div class="col-head s" style="margin-top:24px">SEO · classic search</div>
-      ${breakdown(ai.seo_breakdown)}
+      <p class="bd-intro">Every rating below is measured straight from the page${multi?"s":""} — same input, same result every run.</p>
+      <div class="col-head g">GEO · AI answer engines — ${geoScore}/100</div>
+      ${breakdown(D.geoBreak.dims)}
+      <div class="col-head s" style="margin-top:24px">SEO · classic search — ${seoScore}/100</div>
+      ${breakdown(D.seoBreak.dims)}
     </section>`;
-  }
+
   if(ai && ai.quick_wins && ai.quick_wins.length){
     body += `
     <section class="section">
@@ -951,14 +1167,34 @@ function render(s, seoScore, ai, site, aiErr){
     </section>`;
   }
 
+  // ----- generated files (deliverable): robots.txt / llms.txt when the site lacks them -----
+  if(D.gen && (D.gen.robots || D.gen.llms)){
+    const origin = (D.access && D.access.origin) || "";
+    const fileBlock = (name, content, note) => `
+      <div class="genfile">
+        <div class="gh"><span class="gt">${esc(name)}</span><button class="gb" onclick="copyPre(this)">Copy</button></div>
+        <pre>${esc(content)}</pre>
+        <div class="aw" style="margin-top:8px">${esc(note)}</div>
+      </div>`;
+    body += `
+    <section class="section">
+      <div class="kicker">${nn()} — ready to ship</div>
+      <h2>Generated for your site</h2>
+      <p class="bd-intro">Your site is missing ${D.gen.robots&&D.gen.llms?"both of these":"this"} — save each file at your web root so AI answer engines can find, crawl and cite your pages.</p>
+      ${D.gen.robots?fileBlock("robots.txt", D.gen.robots, "Save at "+origin+"/robots.txt — welcomes the major AI crawlers and points to your sitemap."):""}
+      ${D.gen.llms?fileBlock("llms.txt", D.gen.llms, "Save at "+origin+"/llms.txt — a concise, AI-friendly map of your key pages. Edit the one-line descriptions to taste."):""}
+    </section>`;
+  }
+
   $("#report").innerHTML = head + execBlock + body + `
     <div class="toolbar">
-      <span class="note">SEO is measured from real page signals${multi?` across ${site.agg.n} crawled pages`:""}; GEO is the engine's read of citation-worthiness. AI answers are simulated, not scraped from any single product.</span>
+      <span class="note">SEO and GEO are both measured deterministically from real page signals${multi?` across ${site.agg.n} crawled pages`:""} — reproducible every run. Answer-engine responses are simulated, not scraped from any one product.</span>
       <button class="btn-ghost" onclick="window.print()">Save as PDF</button>
     </div>`;
 
   $("#report").style.display = "block";
 }
+window.copyPre = b => { const pre=b.parentNode.parentNode.querySelector("pre"); if(pre&&navigator.clipboard){ navigator.clipboard.writeText(pre.textContent); const o=b.textContent; b.textContent="Copied"; setTimeout(()=>b.textContent=o,1500); } };
 
 /* ---------- orchestrate ---------- */
 let LAST = null; // {seo, seoScore, site} — lets "Retry AI" re-run just the AI step
@@ -1002,23 +1238,44 @@ async function run(){
     }else if(maxPages>1 && seo.partial){
       conLine("  • entry page was text-only — skipping crawl (need HTML links)", "t-warn");
     }
-    LAST = { seo, seoScore, site };
+    // ---- site-level AI crawler access (robots.txt / llms.txt) ----
+    setStatus("Checking AI crawler access…");
+    conLine("Checking AI crawler access (robots.txt · llms.txt) …", "t-net");
+    const access = await siteAccess(url);
+    conLine("  • robots.txt: "+(access.robotsPresent?(access.allowsAI?"present, allows AI bots":"present, BLOCKS AI bots"):"missing")+"   ·   llms.txt: "+(access.llmsPresent?"present":"missing"), access.allowsAI!==false?"t-dim":"t-warn");
 
-    // ---- AI read (crawl data is already safe if this fails) ----
+    // ---- deterministic SEO + GEO scores and breakdowns ----
+    const scorePages = site ? site.pages : [{ seo, score:seoScore }];
+    const seoBreak = aggregateDims(scorePages, seoDims, null);
+    const geoBreak = aggregateDims(scorePages, geoDims, access);
+    const geoScore = geoBreak.score;
+    conLine("  • GEO score "+geoScore+"/100 (schema · answers · fact density · formatting · authority · entity · crawler access)", "t-ok");
+
+    // ---- generate robots.txt / llms.txt if the site is missing them ----
+    const gen = {};
+    let origin=""; try{ origin=new URL(url).origin; }catch(e){}
+    const brand = ((seo.title||"").split(/[|—–]/)[0].trim()) || hostOf(url);
+    if(!access.robotsPresent) gen.robots = genRobots(access.origin||origin);
+    if(!access.llmsPresent)   gen.llms   = genLlms(brand, seo.desc||"", scorePages);
+    if(gen.robots||gen.llms) conLine("  • generated "+[gen.robots?"robots.txt":null,gen.llms?"llms.txt":null].filter(Boolean).join(" + ")+" for your site", "t-ok");
+
+    const metrics = { seoScore:seoBreak.score, geoScore, seoDims:seoBreak.dims, geoDims:geoBreak.dims, access };
+    const D = { seo, site, seoScore:seoBreak.score, geoScore, seoBreak, geoBreak, access, gen, metrics, ai:null, aiErr:null };
+    LAST = D;
+
+    // ---- AI narrative + actions (the measured scores/breakdown are already complete) ----
     setStatus("Asking the AI answer engine…");
     conLine("Asking the AI answer engine ("+(getKey()?GEMINI_MODEL:"preview model")+")"+(site?" for a site-wide read":"")+" …", "t-net");
-    let ai = null, aiErr = null;
     try{
-      ai = await callAI(seo, seoScore, site);
-      conLine("✓ audit complete — GEO score "+ai.geo_score+"/100. Rendering report ▾", "t-ok");
+      D.ai = await callAI(seo, metrics, site);
+      conLine("✓ audit complete — SEO "+D.seoScore+"/100 · GEO "+geoScore+"/100. Rendering report ▾", "t-ok");
     }catch(e){
-      aiErr = e;
-      conLine("✗ AI read failed: "+(e.message||String(e)), "t-bad");
+      D.aiErr = e;
+      conLine("✗ AI narrative failed: "+(e.message||String(e)), "t-bad");
       if(e.hint) conLine("  → "+e.hint, "t-warn");
     }
-    LAST.aiError = aiErr;
     setStatus("");
-    render(seo, seoScore, ai, site, aiErr);
+    render(D);
     $("#report").scrollIntoView({behavior:"smooth"});
   }catch(e){
     setStatus("");
@@ -1031,23 +1288,23 @@ async function run(){
   }
 }
 
-// Retry only the AI step, reusing the crawl we already have.
+// Retry only the AI narrative, reusing the crawl + measured scores we already have.
 window.retryAI = async function(){
   if(!LAST) return;
   const btns = document.querySelectorAll("[data-retry]");
   btns.forEach(b=>{ b.disabled=true; b.textContent="Retrying…"; });
   conShow(); conLine("↻ retrying AI analysis …", "t-net");
   try{
-    const ai = await callAI(LAST.seo, LAST.seoScore, LAST.site);
-    conLine("✓ AI analysis complete — GEO score "+ai.geo_score+"/100", "t-ok");
-    LAST.aiError = null;
-    render(LAST.seo, LAST.seoScore, ai, LAST.site, null);
+    LAST.ai = await callAI(LAST.seo, LAST.metrics, LAST.site);
+    LAST.aiErr = null;
+    conLine("✓ AI analysis complete — GEO "+LAST.geoScore+"/100", "t-ok");
+    render(LAST);
     $("#report").scrollIntoView({behavior:"smooth"});
   }catch(e){
     conLine("✗ AI read failed: "+(e.message||String(e)), "t-bad");
     if(e.hint) conLine("  → "+e.hint, "t-warn");
-    LAST.aiError = e;
-    render(LAST.seo, LAST.seoScore, null, LAST.site, e); // re-render notice with the latest error
+    LAST.aiErr = e;
+    render(LAST);
   }
 };
 
