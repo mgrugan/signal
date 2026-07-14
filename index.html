@@ -848,7 +848,7 @@ Return ONLY valid JSON (no markdown, no backticks), EXACTLY this shape. Keep str
  "geo_summary":"one blunt sentence on AI-answer readiness",
  "quick_wins":[{"action":"the single most worth-it fix, specific","impact":"high|med","effort":"low|med"}],
  "related_queries":["6-8 real questions this audience types into Google or an AI"],
- "ai_simulations":[{"query":"one of the queries","ai_answer":"how an AI answer engine would actually respond, 2 sentences","would_cite":true|false,"why":"<=14 words on whether this site earns the citation"}],
+ "ai_simulations":[{"query":"one of the queries","ai_answer":"how an AI answer engine would actually respond, 2 sentences","would_cite":true|false,"why":"<=14 words on whether this site earns the citation","findability":"easy|moderate|hard","findability_note":"<=12 words on how easily a clear answer to THIS query could be found and extracted from THIS site (easy = a direct answer or FAQ exists; moderate = present but buried in prose; hard = not on the site)"}],
  "seo_actions":[{"action":"imperative, specific fix","priority":"high|med|low","why":"<=12 words on the payoff","how":"exact steps or example wording, <=24 words"}],
  "geo_actions":[{"action":"imperative, specific GEO fix","priority":"high|med|low","why":"<=12 words on the payoff","how":"exact steps, schema type, or example FAQ/heading wording, <=24 words"}]
 }
@@ -904,7 +904,7 @@ const AI_SCHEMA = {
     topic:STR, audience:STR, executive_summary:STR, seo_summary:STR, geo_summary:STR,
     quick_wins:{ type:"ARRAY", items:ITEM({action:STR, impact:STR, effort:STR}, ["action","impact","effort"]) },
     related_queries:{ type:"ARRAY", items:STR },
-    ai_simulations:{ type:"ARRAY", items:ITEM({query:STR, ai_answer:STR, would_cite:{type:"BOOLEAN"}, why:STR}, ["query","ai_answer","would_cite","why"]) },
+    ai_simulations:{ type:"ARRAY", items:ITEM({query:STR, ai_answer:STR, would_cite:{type:"BOOLEAN"}, why:STR, findability:STR, findability_note:STR}, ["query","ai_answer","would_cite","why","findability","findability_note"]) },
     seo_actions:{ type:"ARRAY", items:ITEM({action:STR, priority:STR, why:STR, how:STR}, ["action","priority","why","how"]) },
     geo_actions:{ type:"ARRAY", items:ITEM({action:STR, priority:STR, why:STR, how:STR}, ["action","priority","why","how"]) }
   },
@@ -1121,6 +1121,7 @@ function render(D){
   if(ai){
     const queries = `<ol class="queries">${(ai.related_queries||[]).map((q,i)=>
       `<li><span class="q-i">${String(i+1).padStart(2,"0")}</span><span>${esc(q)}</span></li>`).join("")}</ol>`;
+    const findFlag = f => { const k=(f||"").toLowerCase(); const cls=k==="easy"?"ok":k==="hard"?"miss":"meh"; return `<span class="flag ${cls}">answer ${esc(f||"moderate")} to find</span>`; };
     const sims = (ai.ai_simulations||[]).map(x=>`
       <div class="sim">
         <div class="sq">${esc(x.query)}</div>
@@ -1129,6 +1130,7 @@ function render(D){
           ? `<span class="flag ok">would cite you</span>`
           : `<span class="flag miss">won't cite you</span>`}
           <span>${esc(x.why)}</span></div>
+        <div class="cite">${findFlag(x.findability)}<span>${esc(x.findability_note||"")}</span></div>
       </div>`).join("");
     body += `
     <section class="section">
@@ -1138,7 +1140,7 @@ function render(D){
     </section>
 
     <section class="section">
-      <div class="kicker g">${nn()} — what the AI says, and whether you're in it</div>
+      <div class="kicker g">${nn()} — what the AI says, whether you're cited, and how easy your answer was to find</div>
       <h2>Answer-engine simulation</h2>
       ${sims}
     </section>
