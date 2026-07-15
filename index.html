@@ -105,12 +105,10 @@
   .hero-inner{max-width:1080px;margin:0 auto;padding:8px 28px 0;display:grid;grid-template-columns:1.08fr .92fr;gap:44px;align-items:center}
   .hero-left{min-width:0}
   .hero-right{display:flex;justify-content:center}
-  .robot-stage{position:relative;width:100%;max-width:400px;aspect-ratio:1/1.02;border-radius:22px;overflow:hidden;
-    background:radial-gradient(120% 120% at 22% 8%, #171d21 0%, #0a0e11 46%, #05070a 100%);
-    border:1px solid #1b2126;box-shadow:0 40px 90px -50px rgba(6,12,9,.9), inset 0 1px 0 rgba(255,255,255,.05)}
-  .robot-spot{position:absolute;inset:0;pointer-events:none;background:
-    radial-gradient(300px 200px at 20% 6%, rgba(255,255,255,.14), transparent 62%),
-    radial-gradient(360px 260px at 92% 118%, rgba(61,220,132,.12), transparent 60%)}
+  /* no box — the robot floats directly on the page gradient */
+  .robot-stage{position:relative;width:100%;max-width:460px;aspect-ratio:1/1.04;overflow:visible;background:transparent}
+  .robot-spot{position:absolute;inset:0;pointer-events:none;z-index:0;background:
+    radial-gradient(46% 42% at 50% 44%, rgba(61,220,132,.10), transparent 70%)}
   .ringsvg{position:absolute;top:50%;left:50%;width:82%;height:82%;transform:translate(-50%,-50%);opacity:0;transition:opacity .5s ease}
   .robot-stage.busy .ringsvg{opacity:1}
   .robot-stage.busy.indet .ringsvg{animation:ringSpin 1.2s linear infinite}
@@ -324,7 +322,7 @@
 </style>
 </head>
 <body>
-<canvas id="net" aria-hidden="true"></canvas>
+<div id="net" aria-hidden="true"></div>
 <section class="hero">
   <div class="hero-inner">
     <div class="hero-left">
@@ -1570,104 +1568,7 @@ $("#url").addEventListener("keydown", e=>{ if(e.key==="Enter") run(); });
   $("#gshow").addEventListener("change", e=>{ k.type = e.target.checked?"text":"password"; });
 })();
 
-/* ============================================================
-   INTERACTIVE NETWORK  (mouse-reactive, kept understated)
-   ------------------------------------------------------------
-   Drifting nodes link to their neighbours and are gently drawn
-   toward the pointer, which trails a soft web to the nodes nearby
-   — the same interaction as before, but toned down: one muted
-   green, low opacity, thinner lines, a gentle (not grabby) pull
-   and a small anchor dot instead of a glowing sci-fi orb.
-   Honours prefers-reduced-motion (single static frame, no cursor).
-   ============================================================ */
-(function(){
-  const canvas = document.getElementById("net");
-  if(!canvas) return;
-  const ctx = canvas.getContext("2d");
-  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  const LINE = "61,220,132";    // signal green — glows on the black background
-  let W=0, H=0, DPR=1, nodes=[], raf=0, running=true;
-  const mouse = { x:null, y:null, on:false };
-  const LINK = 122;             // node-to-node link distance
-  const REACH = 200;            // cursor influence radius
-
-  function size(){
-    DPR = Math.min(window.devicePixelRatio||1, 2);
-    W = canvas.clientWidth; H = canvas.clientHeight;
-    canvas.width = Math.round(W*DPR); canvas.height = Math.round(H*DPR);
-    ctx.setTransform(DPR,0,0,DPR,0,0);
-    build();
-  }
-  function build(){
-    // enough nodes to read as a network, not so many it turns busy
-    const count = Math.max(18, Math.min(58, Math.round(W*H/20000)));
-    nodes = new Array(count).fill(0).map(()=>({
-      x:Math.random()*W, y:Math.random()*H,
-      vx:(Math.random()-.5)*0.16, vy:(Math.random()-.5)*0.16,   // calmer drift
-      r:Math.random()*1.1+0.7
-    }));
-  }
-  function step(){
-    ctx.clearRect(0,0,W,H);
-    for(const n of nodes){
-      if(!reduce){
-        n.x+=n.vx; n.y+=n.vy;
-        if(n.x<0||n.x>W) n.vx*=-1;
-        if(n.y<0||n.y>H) n.vy*=-1;
-        // gentle pull toward the cursor — tapers to nothing at the edge of REACH
-        if(mouse.on){
-          const dx=mouse.x-n.x, dy=mouse.y-n.y, d=Math.hypot(dx,dy);
-          if(d<REACH && d>0.01){ const f=(1-d/REACH)*0.45; n.x+=dx/d*f; n.y+=dy/d*f; }
-        }
-      }
-    }
-    // node-to-node links — faint, muted
-    for(let i=0;i<nodes.length;i++){
-      const a=nodes[i];
-      for(let j=i+1;j<nodes.length;j++){
-        const b=nodes[j];
-        const dx=a.x-b.x, dy=a.y-b.y, dist=Math.hypot(dx,dy);
-        if(dist<LINK){
-          ctx.strokeStyle="rgba("+LINE+","+(0.14*(1-dist/LINK)).toFixed(3)+")";
-          ctx.lineWidth=1;
-          ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
-        }
-      }
-      ctx.fillStyle="rgba("+LINE+",0.34)";
-      ctx.beginPath(); ctx.arc(a.x,a.y,a.r,0,Math.PI*2); ctx.fill();
-    }
-    // cursor web — the connections that follow the pointer (clearly visible, no glow)
-    if(mouse.on){
-      for(const n of nodes){
-        const dx=mouse.x-n.x, dy=mouse.y-n.y, d=Math.hypot(dx,dy);
-        if(d<REACH){
-          ctx.strokeStyle="rgba("+LINE+","+(0.28*(1-d/REACH)).toFixed(3)+")";
-          ctx.lineWidth=1.1;
-          ctx.beginPath(); ctx.moveTo(mouse.x,mouse.y); ctx.lineTo(n.x,n.y); ctx.stroke();
-        }
-      }
-      // small, flat anchor dot at the pointer (no radial glow)
-      ctx.fillStyle="rgba("+LINE+",0.7)";
-      ctx.beginPath(); ctx.arc(mouse.x,mouse.y,2.2,0,Math.PI*2); ctx.fill();
-    }
-    if(!reduce && running) raf=requestAnimationFrame(step);
-  }
-
-  // pointer tracking (mouse + touch) — nodes follow the real pointer
-  window.addEventListener("mousemove", e=>{ mouse.x=e.clientX; mouse.y=e.clientY; mouse.on=true; }, {passive:true});
-  window.addEventListener("mouseleave", ()=>{ mouse.on=false; });
-  window.addEventListener("touchmove", e=>{ const t=e.touches[0]; if(t){ mouse.x=t.clientX; mouse.y=t.clientY; mouse.on=true; } }, {passive:true});
-  window.addEventListener("touchend", ()=>{ mouse.on=false; });
-  window.addEventListener("resize", size);
-  document.addEventListener("visibilitychange", ()=>{
-    running = !document.hidden;
-    if(running && !reduce){ cancelAnimationFrame(raf); raf=requestAnimationFrame(step); }
-  });
-
-  size();
-  step(); // one static frame under reduced-motion; otherwise starts the loop
-})();
+/* (interactive network / magnet removed) */
 </script>
 </body>
 </html>
