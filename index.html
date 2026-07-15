@@ -77,7 +77,9 @@
     transition:background .2s,box-shadow .2s;
   }
   .field button:hover{background:#5BE49B;border-color:#5BE49B;box-shadow:0 0 22px rgba(61,220,132,.35)}
-  .field button:disabled{opacity:.45;cursor:wait}
+  /* stays green while an audit runs — a gentle pulse instead of greying out */
+  .field button:disabled{cursor:wait;background:var(--net);border-color:var(--net);opacity:1;animation:btnPulse 1.2s ease-in-out infinite}
+  @keyframes btnPulse{0%,100%{box-shadow:0 0 0 0 rgba(61,220,132,0)}50%{box-shadow:0 0 22px rgba(61,220,132,.5)}}
   .hint{font-size:12.5px;color:var(--slate);margin-top:10px;font-family:var(--mono)}
   .hint a{color:var(--net)} .hint code{background:var(--panel-solid);border:1px solid var(--hair);padding:0 4px}
   .keyrow{display:flex;gap:10px;align-items:center;margin-top:10px}
@@ -102,26 +104,25 @@
 
   /* ---- hero: form left, cursor-tracking robot right ---- */
   .hero{position:relative;z-index:1}
-  .hero-inner{max-width:1080px;margin:0 auto;padding:8px 28px 0;display:grid;grid-template-columns:1.08fr .92fr;gap:44px;align-items:center}
+  .hero-inner{max-width:1080px;margin:0 auto;padding:40px 28px 0;display:grid;grid-template-columns:1.08fr .92fr;gap:44px;align-items:center}
   .hero-left{min-width:0}
   .hero-right{display:flex;justify-content:center}
   /* no box — the robot floats directly on the page gradient */
-  .robot-stage{position:relative;width:100%;max-width:460px;aspect-ratio:1/1.04;overflow:visible;background:transparent}
+  .robot-stage{position:relative;width:100%;max-width:460px;aspect-ratio:1/1.08;overflow:visible;background:transparent}
   .robot-spot{position:absolute;inset:0;pointer-events:none;z-index:0;background:
-    radial-gradient(46% 42% at 50% 44%, rgba(61,220,132,.10), transparent 70%)}
-  .ringsvg{position:absolute;top:50%;left:50%;width:82%;height:82%;transform:translate(-50%,-50%);opacity:0;transition:opacity .5s ease}
+    radial-gradient(46% 42% at 50% 46%, rgba(61,220,132,.10), transparent 70%)}
+  .ringsvg{position:absolute;top:50%;left:50%;width:98%;height:98%;transform:translate(-50%,-50%);opacity:0;transition:opacity .5s ease;z-index:6}
   .robot-stage.busy .ringsvg{opacity:1}
   .robot-stage.busy.indet .ringsvg{animation:ringSpin 1.2s linear infinite}
   .ring-prog2{transition:stroke-dashoffset .55s cubic-bezier(.4,0,.2,1)}
-  .robot{position:absolute;top:50%;left:50%;width:78%;height:88%;transform:translate(-50%,-46%);overflow:visible;z-index:1}
+  .robot{position:absolute;top:50%;left:50%;width:78%;height:88%;transform:translate(-50%,-50%);overflow:visible;z-index:1}
   /* Higgsfield 3D robot (shown only once its GLB actually loads; SVG is the fallback) */
-  .robot3d{position:absolute;top:50%;left:50%;width:96%;height:98%;transform:translate(-50%,-48%);
+  .robot3d{position:absolute;top:50%;left:50%;width:92%;height:92%;transform:translate(-50%,-50%);
     z-index:2;display:none;background:transparent;--poster-color:transparent;--progress-bar-color:transparent;outline:none}
   .robot3d.on{display:block}
   .robot-stage.has3d .robot{display:none}
   .robot-spot{z-index:0}
-  .ringsvg{z-index:3}
-  .robot-pct,.robot-cap{z-index:4}
+  .robot-pct,.robot-cap{z-index:7}
   .robot-pct{position:absolute;left:0;right:0;bottom:52px;text-align:center;font-family:var(--serif);font-weight:700;
     font-size:30px;letter-spacing:-.02em;color:#EAF2EC;opacity:0;transition:opacity .4s ease;text-shadow:0 2px 14px rgba(0,0,0,.5)}
   .robot-cap{position:absolute;left:0;right:0;bottom:22px;text-align:center;font-family:var(--mono);font-size:11.5px;
@@ -361,7 +362,7 @@
         <model-viewer id="robot3d" class="robot3d"
           src="https://d3u0tzju9qaucj.cloudfront.net/7d051b5a-7bfe-49fe-a484-24e7b3a9458a/70d86108-26fc-41f0-a2e8-72122209df0f.glb"
           autoplay animation-name=""
-          camera-orbit="0deg 86deg 125%" min-camera-orbit="auto auto 125%" max-camera-orbit="auto auto 150%" field-of-view="32deg" camera-target="auto auto auto"
+          camera-orbit="0deg 88deg auto" field-of-view="30deg" camera-target="auto auto auto" interpolation-decay="110"
           interaction-prompt="none" environment-image="neutral" shadow-intensity="0.55" exposure="1.05"
           disable-zoom loading="eager" aria-hidden="true"></model-viewer>
         <svg class="ringsvg" viewBox="0 0 300 300" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
@@ -595,19 +596,19 @@ function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) rin
     mv.classList.add("on");
     mv.addEventListener("load", ()=>{ stage.classList.add("has3d"); }, {once:true});
     mv.addEventListener("error", ()=>{ mv.classList.remove("on"); stage.classList.remove("has3d"); });
-    let tt="0", tp="84";
+    // track the pointer across the whole window, mapped to a gentle camera swing
+    let tt=0, tp=88;
     window.addEventListener("mousemove", e=>{
-      const r=stage.getBoundingClientRect(); if(!r.width) return;
-      const nx=Math.max(-1,Math.min(1,(e.clientX-(r.left+r.width/2))/(r.width*0.6)));
-      const ny=Math.max(-1,Math.min(1,(e.clientY-(r.top+r.height/2))/(r.height*0.6)));
-      tt=(nx*34).toFixed(1); tp=(84-ny*14).toFixed(1);
+      const nx=Math.max(-1,Math.min(1,(e.clientX/innerWidth  - 0.5)*2));
+      const ny=Math.max(-1,Math.min(1,(e.clientY/innerHeight - 0.5)*2));
+      tt=nx*26; tp=88-ny*9;
     }, {passive:true});
     (function orbit(){
       if(robotBusy){
-        if(!reduce && !mv.hasAttribute("auto-rotate")){ mv.setAttribute("auto-rotate-delay","0"); mv.setAttribute("rotation-per-second","44deg"); mv.setAttribute("auto-rotate",""); }
+        if(!reduce && !mv.hasAttribute("auto-rotate")){ mv.setAttribute("auto-rotate-delay","0"); mv.setAttribute("rotation-per-second","40deg"); mv.setAttribute("auto-rotate",""); }
       } else {
         if(mv.hasAttribute("auto-rotate")) mv.removeAttribute("auto-rotate");
-        if(!reduce){ try{ mv.cameraOrbit = tt+"deg "+tp+"deg 125%"; }catch(e){} }
+        if(!reduce){ try{ mv.cameraOrbit = tt.toFixed(1)+"deg "+tp.toFixed(1)+"deg auto"; }catch(e){} }
       }
       requestAnimationFrame(orbit);
     })();
