@@ -111,19 +111,19 @@
   .robot-stage{position:relative;width:100%;max-width:460px;aspect-ratio:1/1.08;overflow:visible;background:transparent}
   .robot-spot{position:absolute;inset:0;pointer-events:none;z-index:0;background:
     radial-gradient(46% 42% at 50% 46%, rgba(61,220,132,.10), transparent 70%)}
-  .ringsvg{position:absolute;top:50%;left:50%;width:98%;height:98%;transform:translate(-50%,-50%);opacity:0;transition:opacity .5s ease;z-index:6}
+  .ringsvg{position:absolute;top:50%;left:50%;width:86%;height:86%;transform:translate(-50%,-50%);opacity:0;transition:opacity .5s ease;z-index:20}
   .robot-stage.busy .ringsvg{opacity:1}
   .robot-stage.busy.indet .ringsvg{animation:ringSpin 1.2s linear infinite}
   .ring-prog2{transition:stroke-dashoffset .55s cubic-bezier(.4,0,.2,1)}
   .robot{position:absolute;top:50%;left:50%;width:78%;height:88%;transform:translate(-50%,-50%);overflow:visible;z-index:1}
   /* Higgsfield 3D robot (shown only once its GLB actually loads; SVG is the fallback).
      scale() shrinks the whole render to guarantee headroom regardless of camera framing. */
-  .robot3d{position:absolute;top:50%;left:50%;width:100%;height:100%;transform:translate(-50%,-50%) scale(0.82);
+  .robot3d{position:absolute;top:50%;left:50%;width:100%;height:100%;transform:translate(-50%,-50%) scale(0.60);
     z-index:2;display:none;background:transparent;--poster-color:transparent;--progress-bar-color:transparent;outline:none}
   .robot3d.on{display:block}
   .robot-stage.has3d .robot{display:none}
   .robot-spot{z-index:0}
-  .robot-pct,.robot-cap{z-index:7}
+  .robot-pct,.robot-cap{z-index:21}
   .robot-pct{position:absolute;left:0;right:0;bottom:52px;text-align:center;font-family:var(--serif);font-weight:700;
     font-size:30px;letter-spacing:-.02em;color:#EAF2EC;opacity:0;transition:opacity .4s ease;text-shadow:0 2px 14px rgba(0,0,0,.5)}
   .robot-cap{position:absolute;left:0;right:0;bottom:22px;text-align:center;font-family:var(--mono);font-size:11.5px;
@@ -373,9 +373,9 @@
             </linearGradient>
             <filter id="ring-glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5"/></filter>
           </defs>
-          <circle cx="150" cy="150" r="132" fill="none" stroke="rgba(150,200,175,.13)" stroke-width="7"/>
-          <circle class="ring-prog2 rg-glow" cx="150" cy="150" r="132" fill="none" stroke="url(#ring-grad)" stroke-width="10" stroke-linecap="round" transform="rotate(-90 150 150)" stroke-dasharray="829.38" stroke-dashoffset="829.38" filter="url(#ring-glow)" opacity="0.55"/>
-          <circle class="ring-prog2" cx="150" cy="150" r="132" fill="none" stroke="url(#ring-grad)" stroke-width="9" stroke-linecap="round" transform="rotate(-90 150 150)" stroke-dasharray="829.38" stroke-dashoffset="829.38"/>
+          <circle cx="150" cy="150" r="132" fill="none" stroke="rgba(61,220,132,.15)" stroke-width="7"/>
+          <circle class="ring-prog2 rg-glow" cx="150" cy="150" r="132" fill="none" stroke="#3DDC84" stroke-width="11" stroke-linecap="round" transform="rotate(-90 150 150)" stroke-dasharray="829.38" stroke-dashoffset="829.38" filter="url(#ring-glow)" opacity="0.6"/>
+          <circle class="ring-prog2" cx="150" cy="150" r="132" fill="none" stroke="#3DDC84" stroke-width="9" stroke-linecap="round" transform="rotate(-90 150 150)" stroke-dasharray="829.38" stroke-dashoffset="829.38"/>
         </svg>
         <svg class="robot" id="robot" viewBox="0 0 300 340" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
           <defs>
