@@ -103,7 +103,15 @@
   .robot-stage.busy .ringsvg{opacity:1}
   .robot-stage.busy.indet .ringsvg{animation:ringSpin 1.2s linear infinite}
   .ring-prog2{transition:stroke-dashoffset .55s cubic-bezier(.4,0,.2,1)}
-  .robot{position:absolute;top:50%;left:50%;width:78%;height:88%;transform:translate(-50%,-46%);overflow:visible}
+  .robot{position:absolute;top:50%;left:50%;width:78%;height:88%;transform:translate(-50%,-46%);overflow:visible;z-index:1}
+  /* Higgsfield 3D robot (shown only once its GLB actually loads; SVG is the fallback) */
+  .robot3d{position:absolute;top:50%;left:50%;width:96%;height:98%;transform:translate(-50%,-48%);
+    z-index:2;display:none;background:transparent;--poster-color:transparent;--progress-bar-color:transparent;outline:none}
+  .robot3d.on{display:block}
+  .robot-stage.has3d .robot{display:none}
+  .robot-spot{z-index:0}
+  .ringsvg{z-index:3}
+  .robot-pct,.robot-cap{z-index:4}
   .robot-pct{position:absolute;left:0;right:0;bottom:52px;text-align:center;font-family:var(--serif);font-weight:700;
     font-size:30px;letter-spacing:-.02em;color:#EAF2EC;opacity:0;transition:opacity .4s ease;text-shadow:0 2px 14px rgba(0,0,0,.5)}
   .robot-cap{position:absolute;left:0;right:0;bottom:22px;text-align:center;font-family:var(--mono);font-size:11.5px;
@@ -340,6 +348,12 @@
     <div class="hero-right">
       <div class="robot-stage" id="robotStage">
         <div class="robot-spot"></div>
+        <model-viewer id="robot3d" class="robot3d"
+          src="https://d3u0tzju9qaucj.cloudfront.net/7d051b5a-7bfe-49fe-a484-24e7b3a9458a/70d86108-26fc-41f0-a2e8-72122209df0f.glb"
+          autoplay animation-name=""
+          camera-orbit="0deg 84deg auto" field-of-view="30deg" camera-target="auto auto auto"
+          interaction-prompt="none" environment-image="neutral" shadow-intensity="0.55" exposure="1.05"
+          disable-zoom loading="eager" aria-hidden="true"></model-viewer>
         <svg class="ringsvg" viewBox="0 0 300 300" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="1">
@@ -556,6 +570,38 @@ function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) rin
     robot.style.setProperty("--ey",(cy*4).toFixed(2)+"px");
     requestAnimationFrame(loop);
   })();
+})();
+
+/* ---------- optional Higgsfield 3D robot (model-viewer). Loads from a CDN and only
+   replaces the SVG once the GLB actually renders; any failure leaves the SVG in place. ---------- */
+(function robot3d(){
+  const mv=document.getElementById("robot3d"), stage=document.getElementById("robotStage");
+  if(!mv||!stage||!window.customElements) return;
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const s=document.createElement("script");
+  s.type="module"; s.src="https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js";
+  s.onerror=()=>{}; document.head.appendChild(s);
+  customElements.whenDefined("model-viewer").then(()=>{
+    mv.classList.add("on");
+    mv.addEventListener("load", ()=>{ stage.classList.add("has3d"); }, {once:true});
+    mv.addEventListener("error", ()=>{ mv.classList.remove("on"); stage.classList.remove("has3d"); });
+    let tt="0", tp="84";
+    window.addEventListener("mousemove", e=>{
+      const r=stage.getBoundingClientRect(); if(!r.width) return;
+      const nx=Math.max(-1,Math.min(1,(e.clientX-(r.left+r.width/2))/(r.width*0.6)));
+      const ny=Math.max(-1,Math.min(1,(e.clientY-(r.top+r.height/2))/(r.height*0.6)));
+      tt=(nx*34).toFixed(1); tp=(84-ny*14).toFixed(1);
+    }, {passive:true});
+    (function orbit(){
+      if(robotBusy){
+        if(!reduce && !mv.hasAttribute("auto-rotate")){ mv.setAttribute("auto-rotate-delay","0"); mv.setAttribute("rotation-per-second","44deg"); mv.setAttribute("auto-rotate",""); }
+      } else {
+        if(mv.hasAttribute("auto-rotate")) mv.removeAttribute("auto-rotate");
+        if(!reduce){ try{ mv.cameraOrbit = tt+"deg "+tp+"deg auto"; }catch(e){} }
+      }
+      requestAnimationFrame(orbit);
+    })();
+  });
 })();
 
 /* ---------- read the page through a hosted reader (no backend) ---------- */
