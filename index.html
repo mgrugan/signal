@@ -601,6 +601,18 @@ function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) rin
   const cv=document.getElementById("robot3d"), stage=document.getElementById("robotStage");
   if(!cv||!stage) return;
   const SCENE="https://prod.spline.design/PQlVmYGLehloI5Nr/scene.splinecode";
+  // The runtime injects a "Built with Spline" badge as a DOM <a> to spline.design for free
+  // scenes. Remove it wherever/whenever it appears (it can be re-inserted after load).
+  function stripBadge(){
+    try{
+      document.querySelectorAll('a[href*="spline.design"],a[href*="spline.com"]').forEach(a=>a.remove());
+      // some builds use a positioned <div>/<span> wrapper instead of an anchor
+      document.querySelectorAll('[id*="spline"],[class*="spline-watermark"],[class*="watermark"]').forEach(el=>{
+        if(el!==cv && !el.contains(cv)) el.remove();
+      });
+    }catch(e){}
+  }
+  new MutationObserver(stripBadge).observe(document.documentElement,{childList:true,subtree:true});
   import("https://esm.sh/@splinetool/runtime").then(m=>{
     const App=m.Application;
     if(!App) return;
@@ -608,8 +620,9 @@ function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) rin
     let app;
     try{ app=new App(cv); }catch(e){ cv.classList.remove("on"); return; }
     app.load(SCENE)
-      .then(()=>{ stage.classList.add("has3d"); }) // real robot is up → drop the SVG fallback
+      .then(()=>{ stage.classList.add("has3d"); stripBadge(); }) // real robot is up → drop the SVG fallback
       .catch(()=>{ cv.classList.remove("on"); stage.classList.remove("has3d"); });
+    [150,400,900,1800,3500,6000].forEach(t=>setTimeout(stripBadge,t));
   }).catch(()=>{ /* runtime couldn't load → SVG fallback stays */ });
 })();
 
