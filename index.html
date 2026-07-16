@@ -35,29 +35,34 @@
   /* completely black backdrop — fixed behind all content */
   #net{position:fixed;inset:0;width:100%;height:100%;z-index:0;display:block;background:#000;}
 
-  /* custom cursor: a small light circle that follows the pointer */
-  #cursor{position:fixed;top:0;left:0;width:10px;height:10px;border-radius:50%;
-    background:rgba(233,255,242,.9);box-shadow:0 0 8px rgba(233,255,242,.25);
-    pointer-events:none;z-index:99999;will-change:transform;
-    transition:width .18s ease,height .18s ease,background .18s ease,box-shadow .2s ease,opacity .2s ease}
-  #cursor.big{width:36px;height:36px;background:rgba(61,220,132,.16);box-shadow:0 0 0 1px rgba(61,220,132,.55),0 0 18px rgba(61,220,132,.22)}
-  #cursor.down{width:9px;height:9px;background:#ffffff}
-  html.hascursor,html.hascursor *{cursor:none}
-  html.hascursor input,html.hascursor textarea{cursor:text}
-  @media (pointer:coarse){ #cursor{display:none} html.hascursor,html.hascursor *{cursor:auto} }
+  /* soft cursor spotlight — a quarter-sized white glow that trails the pointer,
+     layered BEHIND the text and robot (native cursor stays for precision) */
+  #spot{position:fixed;top:0;left:0;width:240px;height:240px;border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,.13) 0%, rgba(255,255,255,.05) 38%, transparent 68%);
+    pointer-events:none;z-index:0;will-change:transform;opacity:0;transition:opacity .4s ease}
+  @media (pointer:coarse){ #spot{display:none} }
   .wrap{max-width:880px;margin:0 auto;padding:0 28px;position:relative;z-index:1}
   a{color:inherit}
 
   /* ---- masthead ---- */
-  .masthead{padding:0 0 28px;border-bottom:1px solid var(--hair)}
+  .masthead{padding:0 0 26px;border-bottom:1px solid var(--hair)}
   .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--slate)}
-  .title{font-family:var(--serif);font-weight:700;font-size:60px;line-height:.98;margin:10px 0 6px;letter-spacing:-.03em}
+  .title{font-family:var(--serif);font-weight:700;font-size:60px;line-height:.98;margin:14px 0 14px;letter-spacing:-.03em}
   .title em{font-style:normal;color:var(--net)}
   .sub{font-size:15px;color:var(--slate);max-width:52ch;line-height:1.65}
 
   /* ---- input ---- */
-  .panel{padding:26px 0 8px}
+  .panel{padding:26px 0 0}
   .field{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+  .field input.bad{border-color:var(--bad)}
+  /* ---- live audit view: swaps in for the form so the whole audit lives in the hero ---- */
+  #live{display:none}
+  .hero-left.auditing .masthead,.hero-left.auditing .panel{display:none}
+  .hero-left.auditing #live{display:block}
+  #live #console{margin:14px 0 0}
+  #live #consoleBody{max-height:52vh}
+  #live #status{margin:0;min-height:18px}
+  #cancel{margin-top:16px}
   .field input{
     flex:1;min-width:240px;font-family:var(--mono);font-size:14px;
     padding:14px 16px;border:1px solid var(--hair);background:var(--panel-solid);color:var(--ink);
@@ -85,9 +90,9 @@
   .lm-btn > #run:disabled{cursor:wait;color:#dfeee6;background:transparent;opacity:1;animation:none}
   .lm-btn:has(#run:disabled){box-shadow:0 0 0 1px rgba(61,220,132,.3);animation:lmPulse 1.4s ease-in-out infinite}
   @keyframes lmPulse{0%,100%{box-shadow:0 0 0 1px rgba(61,220,132,.18)}50%{box-shadow:0 0 0 1px rgba(61,220,132,.42),0 0 16px rgba(61,220,132,.2)}}
-  .hint{font-size:12px;color:#6d786f;margin-top:12px;font-family:var(--mono);line-height:1.7}
+  .hint{font-size:12px;color:#6d786f;margin-top:14px;font-family:var(--mono);line-height:1.7}
   .hint a{color:var(--slate)} .hint code{background:var(--panel-solid);border:1px solid var(--hair);padding:0 4px}
-  .keyrow{display:flex;gap:10px;align-items:center;margin-top:10px}
+  .keyrow{display:flex;gap:10px;align-items:center;margin-top:14px}
   .keyrow input[type=password],.keyrow input[type=text]{
     flex:1;min-width:220px;font-family:var(--mono);font-size:13px;
     padding:11px 14px;border:1px solid var(--hair);background:var(--panel-solid);color:var(--ink);outline:none;border-radius:0;transition:border-color .2s,box-shadow .2s;
@@ -95,7 +100,7 @@
   .keyrow input::placeholder{color:var(--slate)}
   .keyrow input:focus{border-color:#4b5852;box-shadow:none}
   .keyrow .show{font-family:var(--mono);font-size:12px;color:var(--slate);display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap}
-  .optrow{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .optrow{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
   .optrow label{font-family:var(--mono);font-size:12px;color:var(--slate);text-transform:uppercase;letter-spacing:.08em}
   .optrow select{font-family:var(--mono);font-size:13px;padding:9px 12px;border:1px solid var(--hair);background:var(--panel-solid);color:var(--ink);border-radius:0;cursor:pointer;outline:none}
   .optrow select:focus{border-color:#4b5852;box-shadow:none}
@@ -358,7 +363,7 @@
       <header class="masthead">
         <div class="eyebrow">SEO + Generative Engine Optimization · audit</div>
         <h1 class="title">Signal<em>.</em></h1>
-        <p class="sub">Paste a URL. It reads the page's real search signals, asks an AI answer engine the questions your audience would, and returns one no-fluff action plan for both classic search and AI answers.</p>
+        <p class="sub">Paste a URL. Signal crawls your pages, scores them for Google search and AI answers, and hands you the exact fixes.</p>
       </header>
 
       <section class="panel">
@@ -386,6 +391,16 @@
         </div>
         <div class="hint">Free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> — it never leaves your browser.</div>
       </section>
+
+      <!-- live audit view — replaces the form while an audit runs, keeping everything in the hero -->
+      <div id="live">
+        <div id="status"></div>
+        <div id="console" aria-live="polite">
+          <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="cap">signal — live audit</span></div>
+          <div id="consoleBody"></div>
+        </div>
+        <button id="cancel" class="btn-ghost">Cancel audit</button>
+      </div>
     </div>
 
     <div class="hero-right">
@@ -465,16 +480,7 @@
 </section>
 
 <div class="wrap">
-
-  <div id="status"></div>
-
-  <div id="console" aria-live="polite">
-    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="cap">signal — live audit</span></div>
-    <div id="consoleBody"></div>
-  </div>
-
   <main id="report"></main>
-
 </div>
 
 <script>
@@ -759,19 +765,13 @@ function glbBot(){
   }).catch(()=>{});
 })();
 
-/* ---------- custom cursor: a small light circle that trails the pointer ---------- */
-(function customCursor(){
+/* ---------- cursor spotlight: a soft white light that trails the pointer behind content ---------- */
+(function cursorSpot(){
   if(!(window.matchMedia && window.matchMedia("(pointer:fine)").matches)) return;
-  const c=document.createElement("div"); c.id="cursor"; document.body.appendChild(c);
-  document.documentElement.classList.add("hascursor");
-  let x=innerWidth/2, y=innerHeight/2, tx=x, ty=y;
-  const hot="a,button,select,label,input,.gb,.btn-ghost,[role=button],[onclick]";
-  addEventListener("mousemove", e=>{ tx=e.clientX; ty=e.clientY; }, {passive:true});
-  addEventListener("mouseover", e=>{ if(e.target.closest && e.target.closest(hot)) c.classList.add("big"); }, {passive:true});
-  addEventListener("mouseout",  e=>{ if(e.target.closest && e.target.closest(hot)) c.classList.remove("big"); }, {passive:true});
-  addEventListener("mousedown", ()=>c.classList.add("down"), {passive:true});
-  addEventListener("mouseup",   ()=>c.classList.remove("down"), {passive:true});
-  document.addEventListener("mouseleave", ()=>{ c.style.opacity="0"; });
+  const c=document.createElement("div"); c.id="spot"; document.body.appendChild(c);
+  let x=innerWidth/2, y=innerHeight/2, tx=x, ty=y, seen=false;
+  addEventListener("mousemove", e=>{ tx=e.clientX; ty=e.clientY; if(!seen){ seen=true; c.style.opacity="1"; } }, {passive:true});
+  document.addEventListener("mouseleave", ()=>{ c.style.opacity="0"; seen=false; });
   document.addEventListener("mouseenter", ()=>{ c.style.opacity="1"; });
   (function loop(){ x+=(tx-x)*0.3; y+=(ty-y)*0.3; c.style.transform="translate(calc("+x.toFixed(1)+"px - 50%),calc("+y.toFixed(1)+"px - 50%))"; requestAnimationFrame(loop); })();
 })();
@@ -1584,20 +1584,26 @@ window.copyPre = b => { const pre=b.parentNode.parentNode.querySelector("pre"); 
 
 /* ---------- orchestrate ---------- */
 let LAST = null; // {seo, seoScore, site} — lets "Retry AI" re-run just the AI step
+let RUN_SEQ = 0; // bumping this cancels any in-flight audit (its results are discarded)
+const heroLeft = document.querySelector(".hero-left");
+function liveMode(on){ if(heroLeft) heroLeft.classList.toggle("auditing", !!on); }
 
 async function run(){
   let url = $("#url").value.trim();
-  if(!url) return setStatus("Enter a URL first.", false);
+  if(!url){ const u=$("#url"); u.classList.add("bad"); u.focus(); return; }
   if(!/^https?:\/\//i.test(url)) url = "https://" + url;
+  const runId = ++RUN_SEQ, alive = () => RUN_SEQ === runId;
   const maxPages = parseInt(($("#depth")&&$("#depth").value)||"1",10) || 1;
   $("#run").disabled = true; $("#report").style.display="none";
   $("#report").innerHTML=""; setStatus("Fetching the page…");
+  liveMode(true);
   conReset(); conShow();
   await conType("$ signal audit "+url+(maxPages>1?" --crawl "+maxPages:""), "t-cmd");
   botShow(); botStatus("Scanning your site…", "Reaching the page through a public reader."); botProgress(null);
   try{
     conLine("Fetching the entry page through a public reader …", "t-net");
     const page = await fetchPage(url);
+    if(!alive()) return;
     setStatus("Reading search signals…");
     conLine("Reading search signals …", "t-net");
     const seo = extractSEO(page.html, url, page.mode);
@@ -1619,6 +1625,7 @@ async function run(){
       setStatus("Crawling the site…");
       botStatus("Crawling the site", "Following internal links…");
       const pages = await crawlSite(url, seo, maxPages);
+      if(!alive()) return;
       if(pages.length>1){
         const agg = aggregate(pages);
         site = { pages, agg };
@@ -1632,6 +1639,7 @@ async function run(){
     botStatus("Checking AI crawler access", "robots.txt · llms.txt"); botProgress(0.9);
     conLine("Checking AI crawler access (robots.txt · llms.txt) …", "t-net");
     const access = await siteAccess(url);
+    if(!alive()) return;
     conLine("  • robots.txt: "+(access.robotsPresent?(access.allowsAI?"present, allows AI bots":"present, BLOCKS AI bots"):"missing")+"   ·   llms.txt: "+(access.llmsPresent?"present":"missing"), access.allowsAI!==false?"t-dim":"t-warn");
 
     // ---- deterministic SEO + GEO scores and breakdowns ----
@@ -1659,8 +1667,10 @@ async function run(){
     conLine("Asking the AI answer engine ("+(getKey()?GEMINI_MODEL:"preview model")+")"+(site?" for a site-wide read":"")+" …", "t-net");
     try{
       D.ai = await callAI(seo, metrics, site);
+      if(!alive()) return;
       conLine("✓ audit complete — SEO "+D.seoScore+"/100 · GEO "+geoScore+"/100. Rendering report ▾", "t-ok");
     }catch(e){
+      if(!alive()) return;
       D.aiErr = e;
       conLine("✗ AI narrative failed: "+(e.message||String(e)), "t-bad");
       if(e.hint) conLine("  → "+e.hint, "t-warn");
@@ -1669,36 +1679,47 @@ async function run(){
     setStatus("");
     render(D);
     botHide();
+    liveMode(false);        // restore the form; the report takes over below
+    $("#run").disabled = false;
     $("#report").scrollIntoView({behavior:"smooth"});
   }catch(e){
+    if(!alive()) return;
     setStatus(""); botHide();
+    // stay in the live view so the error reads in place — Cancel doubles as "back"
     conLine("✗ "+(e.message||String(e)), "t-bad");
-    $("#report").style.display="none";
-    $("#report").innerHTML = `<div class="err">${esc(e.message||String(e))}</div>`;
-    $("#report").style.display="block";
-  }finally{
+    conLine("  → check the URL, then Cancel to go back and try again", "t-warn");
     $("#run").disabled = false;
   }
 }
+
+// Cancel: invalidate the in-flight run (its awaited results are discarded) and restore the form.
+$("#cancel").addEventListener("click", ()=>{
+  RUN_SEQ++;
+  botHide(); setStatus("");
+  liveMode(false);
+  $("#run").disabled = false;
+});
+$("#url").addEventListener("input", ()=>$("#url").classList.remove("bad"));
 
 // Retry only the AI narrative, reusing the crawl + measured scores we already have.
 window.retryAI = async function(){
   if(!LAST) return;
   const btns = document.querySelectorAll("[data-retry]");
   btns.forEach(b=>{ b.disabled=true; b.textContent="Retrying…"; });
+  liveMode(true); // the console lives in the hero's live view now
   conShow(); conLine("↻ retrying AI analysis …", "t-net");
   botShow(); botStatus("Retrying the AI", "Re-drafting your action plan…"); botProgress(null);
   try{
     LAST.ai = await callAI(LAST.seo, LAST.metrics, LAST.site);
     LAST.aiErr = null;
     conLine("✓ AI analysis complete — GEO "+LAST.geoScore+"/100", "t-ok");
-    botHide(); render(LAST);
+    botHide(); liveMode(false); render(LAST);
     $("#report").scrollIntoView({behavior:"smooth"});
   }catch(e){
     conLine("✗ AI read failed: "+(e.message||String(e)), "t-bad");
     if(e.hint) conLine("  → "+e.hint, "t-warn");
     LAST.aiErr = e;
-    botHide(); render(LAST);
+    botHide(); liveMode(false); render(LAST);
   }
 };
 
