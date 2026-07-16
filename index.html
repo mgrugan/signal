@@ -115,7 +115,8 @@
   /* no box — the robot floats directly on the page gradient */
   .robot-stage{position:relative;width:100%;max-width:440px;aspect-ratio:0.8;overflow:visible;background:transparent}
   .robot-spot{position:absolute;inset:0;pointer-events:none;z-index:0;background:
-    radial-gradient(46% 42% at 50% 46%, rgba(61,220,132,.10), transparent 70%)}
+    radial-gradient(52% 60% at 50% 42%, rgba(180,210,190,.10), transparent 72%),
+    radial-gradient(40% 44% at 50% 40%, rgba(61,220,132,.12), transparent 70%)}
   .ringsvg{position:absolute;top:50%;left:50%;width:88%;height:88%;transform:translate(-50%,-50%);opacity:0;transition:opacity .5s ease;z-index:1}
   .robot-stage.busy .ringsvg{opacity:1}
   .robot-stage.busy.indet .ringsvg{animation:ringSpin 1.2s linear infinite}
@@ -123,8 +124,9 @@
   .robot{position:absolute;top:50%;left:50%;width:78%;height:88%;transform:translate(-50%,-50%);overflow:visible;z-index:1}
   /* Higgsfield 3D robot (shown only once its GLB actually loads; SVG is the fallback).
      scale() shrinks the whole render to guarantee headroom regardless of camera framing. */
-  .robot3d{position:absolute;top:50%;left:50%;width:100%;height:100%;transform:translate(-50%,-50%);
-    z-index:2;display:block;border:0;background:transparent;outline:none;color-scheme:normal}
+  .robot3d{position:absolute;top:50%;left:50%;width:100%;height:100%;transform:translate(-50%,-50%) scale(0.96);
+    z-index:2;display:none;background:transparent;--poster-color:transparent;--progress-bar-color:transparent;outline:none}
+  .robot3d.on{display:block}
   .robot-stage.has3d .robot{display:none}
   .robot-spot{z-index:0}
   .robot-pct,.robot-cap{z-index:7}
@@ -368,10 +370,12 @@
     <div class="hero-right">
       <div class="robot-stage" id="robotStage">
         <div class="robot-spot"></div>
-        <iframe id="robot3d" class="robot3d"
-          src="https://my.spline.design/nexbotrobotcharacterconcept-fXvVXNJZzt2MwtUffdvHwpLz/"
-          title="Nexbot robot" frameborder="0" loading="eager"
-          allow="autoplay; fullscreen" aria-hidden="true"></iframe>
+        <model-viewer id="robot3d" class="robot3d"
+          src="robot.glb"
+          autoplay animation-name=""
+          camera-orbit="0deg 90deg auto" field-of-view="26deg" camera-target="auto auto auto" interpolation-decay="110"
+          interaction-prompt="none" environment-image="neutral" shadow-intensity="0.55" shadow-softness="1" exposure="1.35" tone-mapping="neutral"
+          disable-zoom loading="eager" aria-hidden="true"></model-viewer>
         <svg class="ringsvg" viewBox="0 0 300 300" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="1">
@@ -591,12 +595,35 @@ function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) rin
 })();
 
 /* ---------- optional Higgsfield 3D robot (model-viewer). Loads from a CDN and only
-   reveals over the SVG fallback once the Spline scene has loaded. The scene renders
-   in a cross-origin iframe, so cursor-follow / posing are handled inside Spline itself. ---------- */
+   replaces the SVG once the GLB actually renders; any failure leaves the SVG in place. ---------- */
 (function robot3d(){
-  const fr=document.getElementById("robot3d"), stage=document.getElementById("robotStage");
-  if(!fr||!stage) return;
-  fr.addEventListener("load", ()=>{ stage.classList.add("has3d"); }, {once:true});
+  const mv=document.getElementById("robot3d"), stage=document.getElementById("robotStage");
+  if(!mv||!stage||!window.customElements) return;
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const s=document.createElement("script");
+  s.type="module"; s.src="https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js";
+  s.onerror=()=>{}; document.head.appendChild(s);
+  customElements.whenDefined("model-viewer").then(()=>{
+    mv.classList.add("on");
+    mv.addEventListener("load", ()=>{ stage.classList.add("has3d"); }, {once:true});
+    mv.addEventListener("error", ()=>{ mv.classList.remove("on"); stage.classList.remove("has3d"); });
+    // track the pointer across the whole window, mapped to a gentle camera swing
+    let tt=0, tp=90;
+    window.addEventListener("mousemove", e=>{
+      const nx=Math.max(-1,Math.min(1,(e.clientX/innerWidth  - 0.5)*2));
+      const ny=Math.max(-1,Math.min(1,(e.clientY/innerHeight - 0.5)*2));
+      tt=nx*16; tp=90-ny*5;
+    }, {passive:true});
+    (function orbit(){
+      if(mv.hasAttribute("auto-rotate")) mv.removeAttribute("auto-rotate");
+      if(!reduce){
+        // while an audit runs, hold the clean front pose (no spin = the head never clips);
+        // when idle, lean gently toward the pointer
+        try{ mv.cameraOrbit = robotBusy ? "0deg 90deg auto" : (tt.toFixed(1)+"deg "+tp.toFixed(1)+"deg auto"); }catch(e){}
+      }
+      requestAnimationFrame(orbit);
+    })();
+  });
 })();
 
 /* ---------- liquid-metal shader wrapping the RUN AUDIT button (progressive enhancement;
