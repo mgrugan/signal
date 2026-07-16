@@ -58,22 +58,15 @@
   .ld-pct{font-family:"Inter",var(--sans);font-weight:100;font-size:120px;line-height:1;letter-spacing:-.05em;
     color:transparent;background:linear-gradient(to bottom,#ffffff 0%,rgba(255,255,255,.2) 100%);
     -webkit-background-clip:text;background-clip:text;animation:ldIn 2.5s cubic-bezier(.22,1,.36,1) .5s both}
-  .ld-status{display:flex;align-items:center;gap:16px;animation:ldIn 2.5s cubic-bezier(.22,1,.36,1) .8s both}
-  .ld-rule{width:64px;height:1px;background:rgba(255,255,255,.1)}
-  .ld-label{font-family:var(--mono);font-size:12px;letter-spacing:.4em;text-transform:uppercase;color:#e5e2e1;white-space:nowrap}
   .ld-track{width:240px;height:1px;background:rgba(255,255,255,.1);overflow:hidden;
     animation:ldIn 2.5s cubic-bezier(.22,1,.36,1) .8s both}
   .ld-fill{height:100%;width:0;background:#fff;box-shadow:0 0 20px rgba(255,255,255,.15);transition:width .3s ease-out}
-  .ld-meta{display:flex;gap:32px;opacity:.3;animation:ldIn 2.5s cubic-bezier(.22,1,.36,1) .8s both}
-  .ld-meta span{font-family:var(--mono);font-size:10px;letter-spacing:.02em;white-space:nowrap}
   @keyframes ldIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   @media (max-width:640px){
     .ld-pct{font-size:76px} .ld-stack{gap:32px}
-    .ld-rule{width:36px} .ld-label{font-size:10.5px;letter-spacing:.3em}
-    .ld-meta{gap:16px;flex-wrap:wrap;justify-content:center;padding:0 20px}
   }
   @media (prefers-reduced-motion:reduce){
-    #loader::before,.ld-glyph,.ld-pct,.ld-status,.ld-track,.ld-meta{animation:none}
+    #loader::before,.ld-glyph,.ld-pct,.ld-track{animation:none}
   }
 
   /* soft cursor spotlight — a quarter-sized white glow that trails the pointer,
@@ -472,13 +465,7 @@
   <div class="ld-stack">
     <div class="ld-glyph"><i></i></div>
     <div class="ld-pct" id="ldPct">00%</div>
-    <div class="ld-status">
-      <span class="ld-rule"></span>
-      <span class="ld-label" id="ldLabel">INITIALIZING</span>
-      <span class="ld-rule"></span>
-    </div>
     <div class="ld-track"><div class="ld-fill" id="ldFill"></div></div>
-    <div class="ld-meta"><span>ENGINE: SEO+GEO</span><span>KEY: LOCAL-ONLY</span><span>VER: 2.0-STABLE</span></div>
   </div>
 </div>
 <div id="net" aria-hidden="true"></div>
@@ -956,20 +943,11 @@ void main(){
   })();
 
   /* — organic progress, gated on the robot actually rendering — */
-  const pct=document.getElementById("ldPct"), fill=document.getElementById("ldFill"), label=document.getElementById("ldLabel");
-  const statuses=["AUTHENTICATING SECURE UPLINK","SYNCING NEURAL INTERFACE","CALIBRATING CORE MODULES",
-                  "ALLOCATING MEMORY BLOCKS","ESTABLISHING HANDSHAKE","READY FOR ACCESS"];
+  const pct=document.getElementById("ldPct"), fill=document.getElementById("ldFill");
   let progress=0, ready=false, done=false;
   function paint(){
     if(pct) pct.textContent=String(Math.floor(progress)).padStart(2,"0")+"%";
     if(fill) fill.style.width=progress+"%";
-    if(!label) return;
-    if(progress>=100) label.textContent=statuses[5];
-    else if(progress>95) label.textContent=statuses[4];
-    else if(progress>80) label.textContent=statuses[3];
-    else if(progress>60) label.textContent=statuses[2];
-    else if(progress>40) label.textContent=statuses[1];
-    else if(progress>20) label.textContent=statuses[0];
   }
   function finish(){
     if(done) return; done=true;
