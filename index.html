@@ -108,23 +108,28 @@
   .err{border:1.5px solid var(--bad);padding:16px 18px;color:var(--bad);font-family:var(--mono);font-size:13px;margin:24px 0}
 
   /* ---- hero: form left, cursor-tracking robot right ---- */
-  .hero{position:relative;z-index:1}
-  .hero-inner{max-width:1080px;margin:0 auto;padding:40px 28px 0;display:grid;grid-template-columns:1.08fr .92fr;gap:44px;align-items:center}
-  .hero-left{min-width:0}
+  .hero{position:relative;z-index:1;overflow:hidden}
+  .hero-inner{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:40px 28px 0;min-height:620px;
+    display:grid;grid-template-columns:1.08fr .92fr;gap:44px;align-items:center}
+  .hero-left{min-width:0;position:relative;z-index:3}
   .hero-right{display:flex;justify-content:center}
-  /* no box — the robot floats directly on the page gradient */
-  .robot-stage{position:relative;width:100%;max-width:440px;aspect-ratio:0.8;overflow:visible;background:transparent}
+  /* the 3D viewport is a full-bleed layer over the ENTIRE hero section — the text/form
+     sit above it (hero-inner z:2), and the robot renders centered in the viewport,
+     which lands just right of the text column */
+  .robot-stage{position:absolute;inset:0;z-index:0;overflow:visible;background:transparent}
   .robot-spot{position:absolute;inset:0;pointer-events:none;z-index:0;background:
-    radial-gradient(52% 60% at 50% 42%, rgba(180,210,190,.10), transparent 72%),
-    radial-gradient(40% 44% at 50% 40%, rgba(61,220,132,.12), transparent 70%)}
-  .ringsvg{position:absolute;top:50%;left:50%;width:88%;height:88%;transform:translate(-50%,-50%);opacity:0;transition:opacity .5s ease;z-index:1}
+    radial-gradient(min(430px,40vw) min(420px,56vh) at 72% 45%, rgba(180,210,190,.09), transparent 62%),
+    radial-gradient(min(330px,30vw) min(330px,44vh) at 72% 43%, rgba(61,220,132,.11), transparent 62%)}
+  .ringsvg{position:absolute;top:50%;left:72%;width:min(540px,66vmin);height:min(540px,66vmin);transform:translate(-50%,-50%);opacity:0;transition:opacity .5s ease;z-index:1}
   .robot-stage.busy .ringsvg{opacity:1}
   .robot-stage.busy.indet .ringsvg{animation:ringSpin 1.2s linear infinite}
   .ring-prog2{transition:stroke-dashoffset .55s cubic-bezier(.4,0,.2,1)}
-  .robot{position:absolute;top:50%;left:50%;width:78%;height:88%;transform:translate(-50%,-50%);overflow:visible;z-index:1}
+  .robot{position:absolute;top:50%;left:72%;width:min(430px,60vmin);height:min(480px,68vmin);transform:translate(-50%,-50%);overflow:visible;z-index:1}
   /* Higgsfield 3D robot (shown only once its GLB actually loads; SVG is the fallback).
      scale() shrinks the whole render to guarantee headroom regardless of camera framing. */
-  .robot3d{position:absolute;top:50%;left:50%;width:100%;height:100%;transform:translate(-50%,-50%);
+  /* full-hero-size canvas nudged right so the (scene-centered) robot lands at ~72%,
+     clear of the text column — works for both the Spline scene and the GLB render */
+  .robot3d{position:absolute;top:50%;left:50%;width:100%;height:100%;transform:translate(-28%,-50%);
     z-index:2;display:none;background:transparent;outline:none}
   .robot3d.on{display:block}
   /* the robot renders into this canvas via @splinetool/runtime — no web component, so Spline
@@ -134,13 +139,24 @@
   .robot-stage.has3d .robot{display:none}
   .robot-spot{z-index:0}
   .robot-pct,.robot-cap{z-index:7}
-  .robot-pct{position:absolute;left:0;right:0;bottom:52px;text-align:center;font-family:var(--serif);font-weight:700;
+  .robot-pct{position:absolute;left:44%;right:0;bottom:52px;text-align:center;font-family:var(--serif);font-weight:700;
     font-size:30px;letter-spacing:-.02em;color:#EAF2EC;opacity:0;transition:opacity .4s ease;text-shadow:0 2px 14px rgba(0,0,0,.5)}
-  .robot-cap{position:absolute;left:0;right:0;bottom:22px;text-align:center;font-family:var(--mono);font-size:11.5px;
+  .robot-cap{position:absolute;left:44%;right:0;bottom:22px;text-align:center;font-family:var(--mono);font-size:11.5px;
     letter-spacing:.06em;color:#9fb3a6;opacity:0;transition:opacity .4s ease;padding:0 16px}
   .robot-stage.busy .robot-pct,.robot-stage.busy .robot-cap{opacity:1}
-  @media (max-width:860px){ .hero-inner{grid-template-columns:1fr;gap:22px} .hero-right{order:2} .robot-stage{max-width:320px} }
-  @media (max-width:480px){ .robot-stage{max-width:260px} .robot-pct{font-size:24px;bottom:44px} }
+  @media (max-width:860px){
+    .hero-inner{grid-template-columns:1fr;gap:22px;min-height:0} .hero-right{order:2;min-height:380px}
+    /* on small screens the viewport goes back in-flow below the form instead of full-bleed */
+    .robot-stage{position:relative;inset:auto;width:100%;max-width:340px;aspect-ratio:0.8}
+    .robot3d{transform:translate(-50%,-50%)}
+    .ringsvg{width:88%;height:88%;left:50%}
+    .robot{width:78%;height:88%;left:50%}
+    .robot-pct,.robot-cap{left:0}
+    .robot-spot{background:
+      radial-gradient(52% 60% at 50% 42%, rgba(180,210,190,.10), transparent 72%),
+      radial-gradient(40% 44% at 50% 40%, rgba(61,220,132,.12), transparent 70%)}
+  }
+  @media (max-width:480px){ .robot-stage{max-width:280px} .robot-pct{font-size:24px;bottom:44px} }
 
   /* robot animation + cursor-tracking transforms (vars set by JS) */
   .r-float{animation:rFloat 4.2s ease-in-out infinite}
