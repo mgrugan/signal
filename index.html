@@ -49,7 +49,13 @@
   .masthead{padding:0 0 36px;border-bottom:1px solid var(--hair)}
   .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--slate)}
   .title{font-family:var(--serif);font-weight:700;font-size:60px;line-height:.98;margin:18px 0 18px;letter-spacing:-.03em}
-  .title em{font-style:normal;color:var(--net)}
+  /* the dot is liquid metal — chrome gradient clipped to the glyph, with a slow shimmer */
+  .title em{font-style:normal;color:transparent;
+    background:linear-gradient(135deg,#9aa3ad 0%,#e8edf1 22%,#4a525a 45%,#cdd5db 68%,#6b737c 88%,#aab3bc 100%);
+    background-size:220% 220%;-webkit-background-clip:text;background-clip:text;
+    animation:metalShift 3.6s ease-in-out infinite alternate}
+  @keyframes metalShift{from{background-position:0% 0%}to{background-position:100% 100%}}
+  @media (prefers-reduced-motion:reduce){ .title em{animation:none} }
   .sub{font-size:15px;color:var(--slate);max-width:52ch;line-height:1.65}
 
   /* ---- input ---- */
