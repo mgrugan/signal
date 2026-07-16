@@ -37,22 +37,23 @@
 
   /* soft cursor spotlight — a quarter-sized white glow that trails the pointer,
      layered BEHIND the text and robot (native cursor stays for precision) */
-  #spot{position:fixed;top:0;left:0;width:240px;height:240px;border-radius:50%;
-    background:radial-gradient(circle, rgba(255,255,255,.13) 0%, rgba(255,255,255,.05) 38%, transparent 68%);
-    pointer-events:none;z-index:0;will-change:transform;opacity:0;transition:opacity .4s ease}
+  #spot{position:fixed;top:0;left:0;width:320px;height:320px;border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,.19) 0%, rgba(255,255,255,.075) 40%, transparent 68%);
+    pointer-events:none;z-index:0;will-change:transform;opacity:0;transition:opacity .35s ease}
+  #spot.off{opacity:0!important}
   @media (pointer:coarse){ #spot{display:none} }
   .wrap{max-width:880px;margin:0 auto;padding:0 28px;position:relative;z-index:1}
   a{color:inherit}
 
   /* ---- masthead ---- */
-  .masthead{padding:0 0 26px;border-bottom:1px solid var(--hair)}
+  .masthead{padding:0 0 36px;border-bottom:1px solid var(--hair)}
   .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--slate)}
-  .title{font-family:var(--serif);font-weight:700;font-size:60px;line-height:.98;margin:14px 0 14px;letter-spacing:-.03em}
+  .title{font-family:var(--serif);font-weight:700;font-size:60px;line-height:.98;margin:18px 0 18px;letter-spacing:-.03em}
   .title em{font-style:normal;color:var(--net)}
   .sub{font-size:15px;color:var(--slate);max-width:52ch;line-height:1.65}
 
   /* ---- input ---- */
-  .panel{padding:26px 0 0}
+  .panel{padding:36px 0 0}
   .field{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
   .field input.bad{border-color:var(--bad)}
   /* ---- live audit view: swaps in for the form so the whole audit lives in the hero ---- */
@@ -90,9 +91,9 @@
   .lm-btn > #run:disabled{cursor:wait;color:#dfeee6;background:transparent;opacity:1;animation:none}
   .lm-btn:has(#run:disabled){box-shadow:0 0 0 1px rgba(61,220,132,.3);animation:lmPulse 1.4s ease-in-out infinite}
   @keyframes lmPulse{0%,100%{box-shadow:0 0 0 1px rgba(61,220,132,.18)}50%{box-shadow:0 0 0 1px rgba(61,220,132,.42),0 0 16px rgba(61,220,132,.2)}}
-  .hint{font-size:12px;color:#6d786f;margin-top:14px;font-family:var(--mono);line-height:1.7}
+  .hint{font-size:12px;color:#6d786f;margin-top:18px;font-family:var(--mono);line-height:1.7}
   .hint a{color:var(--slate)} .hint code{background:var(--panel-solid);border:1px solid var(--hair);padding:0 4px}
-  .keyrow{display:flex;gap:10px;align-items:center;margin-top:14px}
+  .keyrow{display:flex;gap:10px;align-items:center;margin-top:18px}
   .keyrow input[type=password],.keyrow input[type=text]{
     flex:1;min-width:220px;font-family:var(--mono);font-size:13px;
     padding:11px 14px;border:1px solid var(--hair);background:var(--panel-solid);color:var(--ink);outline:none;border-radius:0;transition:border-color .2s,box-shadow .2s;
@@ -100,7 +101,7 @@
   .keyrow input::placeholder{color:var(--slate)}
   .keyrow input:focus{border-color:#4b5852;box-shadow:none}
   .keyrow .show{font-family:var(--mono);font-size:12px;color:var(--slate);display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap}
-  .optrow{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .optrow{display:flex;align-items:center;gap:10px;margin-top:18px;flex-wrap:wrap}
   .optrow label{font-family:var(--mono);font-size:12px;color:var(--slate);text-transform:uppercase;letter-spacing:.08em}
   .optrow select{font-family:var(--mono);font-size:13px;padding:9px 12px;border:1px solid var(--hair);background:var(--panel-solid);color:var(--ink);border-radius:0;cursor:pointer;outline:none}
   .optrow select:focus{border-color:#4b5852;box-shadow:none}
@@ -208,14 +209,21 @@
 
   /* ---- report ---- */
   #report{display:none}
+  /* static chrome borders for the report's key blocks (gradient paints only the border ring) */
+  .chrome-line{border-color:#79828c!important}
+  @property --ca{syntax:'<angle>';initial-value:0deg;inherits:false}
+  @keyframes chromeSpin{to{--ca:360deg}}
   .rpt-head{padding:34px 0 24px;border-bottom:1px solid var(--hair)}
   .rpt-url{font-family:var(--mono);font-size:13px;color:var(--seo);word-break:break-all}
   .rpt-name{font-family:var(--serif);font-weight:700;font-size:38px;line-height:1.05;margin:8px 0 4px;letter-spacing:-.02em}
   .rpt-meta{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--slate);text-transform:uppercase}
 
-  .scores{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1.5px solid var(--ink);margin:26px 0 6px}
+  .scores{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:26px 0 6px;
+    border:1.5px solid transparent;background:
+    linear-gradient(#000,#000) padding-box,
+    linear-gradient(150deg,#9aa3ad 0%,#4a525a 22%,#d6dde3 42%,#3c434b 62%,#aab3bc 82%,#5c646d 100%) border-box}
   .score{padding:22px 24px}
-  .score:first-child{border-right:1.5px solid var(--ink)}
+  .score:first-child{border-right:1.5px solid #79828c}
   .score .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--slate)}
   .score .num{font-family:var(--serif);font-weight:700;font-size:60px;line-height:1;margin:4px 0 2px;letter-spacing:-.02em}
   .score.s .num{color:var(--seo)} .score.g .num{color:var(--geo)}
@@ -257,12 +265,14 @@
   .pri.high{color:var(--bad)} .pri.med{color:var(--warn)} .pri.low{color:var(--slate)}
   .actions .at{font-size:15px;font-weight:500}
   .actions .aw{font-size:13px;color:var(--slate);margin-top:2px}
-  .col-head{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;margin:0 0 8px;padding-bottom:8px;border-bottom:1.5px solid var(--ink)}
+  .col-head{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;margin:0 0 8px;padding-bottom:8px;border-bottom:1.5px solid #79828c}
   .col-head.s{color:var(--seo)} .col-head.g{color:var(--geo)}
   .twocol{display:grid;grid-template-columns:1fr 1fr;gap:34px}
 
   /* ---- executive summary ---- */
-  .exec{border:1.5px solid var(--ink);background:var(--panel-solid);padding:20px 22px;margin:24px 0 6px}
+  .exec{padding:20px 22px;margin:24px 0 6px;border:1.5px solid transparent;background:
+    linear-gradient(var(--panel-solid),var(--panel-solid)) padding-box,
+    linear-gradient(150deg,#9aa3ad 0%,#4a525a 22%,#d6dde3 42%,#3c434b 62%,#aab3bc 82%,#5c646d 100%) border-box}
   .exec .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--slate);margin-bottom:9px}
   .exec p{margin:0;font-size:16px;line-height:1.55;color:var(--ink)}
 
@@ -302,7 +312,10 @@
   .genfile .gb:hover{background:var(--net);border-color:var(--net);color:#04140b}
 
   /* ---- site crawl dashboard ---- */
-  .statgrid{display:grid;grid-template-columns:repeat(4,1fr);border:1.5px solid var(--ink);border-bottom:0;margin:6px 0 18px}
+  .statgrid{display:grid;grid-template-columns:repeat(4,1fr);margin:6px 0 18px;
+    border:1.5px solid transparent;border-bottom:0;background:
+    linear-gradient(#000,#000) padding-box,
+    linear-gradient(150deg,#9aa3ad 0%,#4a525a 22%,#d6dde3 42%,#3c434b 62%,#aab3bc 82%,#5c646d 100%) border-box}
   .stat{padding:16px 18px;border-right:1px solid var(--hair);border-bottom:1.5px solid var(--hair)}
   .stat:nth-child(4n){border-right:0}
   .stat .n{font-family:var(--serif);font-weight:700;font-size:30px;line-height:1;color:var(--ink);letter-spacing:-.01em}
@@ -312,7 +325,7 @@
   .cwrap{max-height:460px;overflow:auto;border:1px solid var(--hair)}
   .ctable{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
   .ctable th{position:sticky;top:0;background:var(--panel-solid);text-align:left;font-size:10px;letter-spacing:.1em;
-    text-transform:uppercase;color:var(--slate);border-bottom:1.5px solid var(--ink);padding:9px 11px;white-space:nowrap}
+    text-transform:uppercase;color:var(--slate);border-bottom:1.5px solid #79828c;padding:9px 11px;white-space:nowrap}
   .ctable td{padding:9px 11px;border-bottom:1px solid var(--hair);vertical-align:top}
   .ctable tr:last-child td{border-bottom:0}
   .ctable td.num{text-align:right;white-space:nowrap}
@@ -327,6 +340,15 @@
   .toolbar .note{font-family:var(--mono);font-size:11px;color:var(--slate);max-width:46ch}
   .btn-ghost{font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase;
     padding:12px 22px;border:1.5px solid var(--hair);background:var(--panel-solid);color:var(--ink);cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+  /* animated chrome ring on the PDF button — square corners kept */
+  .toolbar .btn-ghost{border:1.5px solid transparent;border-radius:0;background:
+    linear-gradient(var(--panel-solid),var(--panel-solid)) padding-box,
+    conic-gradient(from var(--ca),#3a4046,#dfe5ea 16%,#4a525a 36%,#c2cad2 54%,#3a4046 70%,#98a1aa 86%,#3a4046) border-box;
+    animation:chromeSpin 3.2s linear infinite}
+  .toolbar .btn-ghost:hover{color:#fff;background:
+    linear-gradient(#151a1e,#151a1e) padding-box,
+    conic-gradient(from var(--ca),#3a4046,#f2f6f9 16%,#565e66 36%,#d6dde3 54%,#3a4046 70%,#aab3bc 86%,#3a4046) border-box}
+  @media (prefers-reduced-motion:reduce){ .toolbar .btn-ghost{animation:none} }
   .btn-ghost:hover{background:var(--net);border-color:var(--net);color:#04140b}
 
   @media (max-width:640px){
@@ -473,7 +495,6 @@
           </g>
         </svg>
         <div class="robot-pct" id="robotPct"></div>
-        <div class="robot-cap" id="robotCap"></div>
       </div>
     </div>
   </div>
@@ -583,7 +604,7 @@ const RING_C2 = 2*Math.PI*132; // circumference of the r=132 progress ring
 let robotBusy = false;
 function botShow(){ robotBusy=true; const r=$("#robot"); if(r) r.classList.add("busy"); const s=$("#robotStage"); if(s) s.classList.add("busy"); }
 function botHide(){ robotBusy=false; const r=$("#robot"); if(r) r.classList.remove("busy"); const s=$("#robotStage"); if(s){ s.classList.remove("busy"); s.classList.remove("indet"); } }
-function botStatus(title, sub){ const c=$("#robotCap"); if(c) c.textContent = title ? (title + (sub? " · "+sub : "")) : ""; }
+function botStatus(){ /* caption removed by design — the console carries the narration */ }
 function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) ring
   const stage=$("#robotStage"), pct=$("#robotPct"); const arcs=document.querySelectorAll(".ring-prog2");
   if(!stage) return;
@@ -771,6 +792,9 @@ function glbBot(){
   const c=document.createElement("div"); c.id="spot"; document.body.appendChild(c);
   let x=innerWidth/2, y=innerHeight/2, tx=x, ty=y, seen=false;
   addEventListener("mousemove", e=>{ tx=e.clientX; ty=e.clientY; if(!seen){ seen=true; c.style.opacity="1"; } }, {passive:true});
+  // the light dips out while the pointer is over a text box so it never fights the caret
+  addEventListener("mouseover", e=>{ if(e.target.closest && e.target.closest("input,textarea,select")) c.classList.add("off"); }, {passive:true});
+  addEventListener("mouseout",  e=>{ if(e.target.closest && e.target.closest("input,textarea,select")) c.classList.remove("off"); }, {passive:true});
   document.addEventListener("mouseleave", ()=>{ c.style.opacity="0"; seen=false; });
   document.addEventListener("mouseenter", ()=>{ c.style.opacity="1"; });
   (function loop(){ x+=(tx-x)*0.3; y+=(ty-y)*0.3; c.style.transform="translate(calc("+x.toFixed(1)+"px - 50%),calc("+y.toFixed(1)+"px - 50%))"; requestAnimationFrame(loop); })();
