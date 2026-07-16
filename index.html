@@ -127,14 +127,10 @@
   .robot3d{position:absolute;top:50%;left:50%;width:100%;height:100%;transform:translate(-50%,-50%);
     z-index:2;display:none;background:transparent;outline:none}
   .robot3d.on{display:block}
-  /* render the scene in-page (not an iframe) so we can hide Spline's badge + keep the bg transparent */
-  spline-viewer::part(logo){display:none!important}
-  spline-viewer{background:transparent!important}
-  /* guaranteed badge cover: a black patch over the bottom-right corner where Spline draws its logo.
-     Invisible against the pure-black page; doesn't depend on shadow-DOM access. */
-  .badge-mask{position:absolute;right:0;bottom:0;width:200px;height:52px;z-index:8;pointer-events:none;
-    background:#000}
-  @media (max-width:480px){ .badge-mask{width:150px;height:44px} }
+  /* the robot renders into this canvas via @splinetool/runtime — no web component, so Spline
+     injects no "Built with Spline" badge at all (nothing to hide or cover) */
+  canvas.robot3d{display:none}
+  canvas.robot3d.on{display:block}
   .robot-stage.has3d .robot{display:none}
   .robot-spot{z-index:0}
   .robot-pct,.robot-cap{z-index:7}
@@ -378,10 +374,7 @@
     <div class="hero-right">
       <div class="robot-stage" id="robotStage">
         <div class="robot-spot"></div>
-        <spline-viewer id="robot3d" class="robot3d"
-          url="https://prod.spline.design/PQlVmYGLehloI5Nr/scene.splinecode"
-          loading-anim-type="none" aria-hidden="true"></spline-viewer>
-        <div class="badge-mask" aria-hidden="true"></div>
+        <canvas id="robot3d" class="robot3d" aria-hidden="true"></canvas>
         <svg class="ringsvg" viewBox="0 0 300 300" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="1">
@@ -600,36 +593,24 @@ function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) rin
   })();
 })();
 
-/* ---------- optional Higgsfield 3D robot (model-viewer). Loads from a CDN and only
-   reveals over the SVG fallback once the Spline scene renders in-page. Because it's a
-   web component (not an iframe) we can hide the badge and keep the background transparent.
-   Cursor-follow / posing are handled inside the Spline scene itself. ---------- */
+/* ---------- Spline robot via @splinetool/runtime. Rendering the scene into our own
+   <canvas> (instead of the <spline-viewer> web component) means Spline injects NO
+   "Built with Spline" badge — there's nothing to hide or cover. Same scene URL.
+   Scene interactions (cursor-follow) are driven by the runtime on the canvas. ---------- */
 (function robot3d(){
-  const fr=document.getElementById("robot3d"), stage=document.getElementById("robotStage");
-  if(!fr||!stage||!window.customElements) return;
-  const s=document.createElement("script");
-  s.type="module"; s.src="https://unpkg.com/@splinetool/viewer@1.9.48/build/spline-viewer.js";
-  s.onerror=()=>{}; document.head.appendChild(s);
-  // Spline can re-inject its badge into the shadow DOM after load, so strip it persistently.
-  function killBadge(){
-    try{
-      const sr=fr.shadowRoot; if(!sr) return;
-      sr.querySelectorAll('a,[part="logo"],#logo').forEach(el=>{
-        const sig=((el.getAttribute&&el.getAttribute('href'))||"")+" "+(el.id||"")+" "+(el.className||"");
-        if(/spline|logo/i.test(sig)) el.style.setProperty("display","none","important");
-      });
-    }catch(e){}
-  }
-  // swap the SVG fallback out the instant Spline's real canvas exists (not on the `load`
-  // event, which doesn't reliably fire) so the SVG never lingers behind the 3D robot
-  function reveal(){ try{ if(fr.shadowRoot && fr.shadowRoot.querySelector("canvas")) stage.classList.add("has3d"); }catch(e){} }
-  customElements.whenDefined("spline-viewer").then(()=>{
-    fr.classList.add("on");
-    fr.addEventListener("load", ()=>{ stage.classList.add("has3d"); killBadge(); }, {once:true});
-    (function arm(){ const sr=fr.shadowRoot; if(sr){ killBadge(); reveal(); new MutationObserver(()=>{killBadge();reveal();}).observe(sr,{childList:true,subtree:true}); } else setTimeout(arm,150); })();
-    [300,800,1600,3000,6000].forEach(t=>setTimeout(()=>{killBadge();reveal();},t));
-    setTimeout(()=>stage.classList.add("has3d"), 5000); // hard fallback: never leave the SVG showing
-  });
+  const cv=document.getElementById("robot3d"), stage=document.getElementById("robotStage");
+  if(!cv||!stage) return;
+  const SCENE="https://prod.spline.design/PQlVmYGLehloI5Nr/scene.splinecode";
+  import("https://esm.sh/@splinetool/runtime").then(m=>{
+    const App=m.Application;
+    if(!App) return;
+    cv.classList.add("on");                       // make the canvas visible/sized before init
+    let app;
+    try{ app=new App(cv); }catch(e){ cv.classList.remove("on"); return; }
+    app.load(SCENE)
+      .then(()=>{ stage.classList.add("has3d"); }) // real robot is up → drop the SVG fallback
+      .catch(()=>{ cv.classList.remove("on"); stage.classList.remove("has3d"); });
+  }).catch(()=>{ /* runtime couldn't load → SVG fallback stays */ });
 })();
 
 /* ---------- liquid-metal shader wrapping the RUN AUDIT button (progressive enhancement;
