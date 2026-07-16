@@ -35,6 +35,22 @@
   /* completely black backdrop — fixed behind all content */
   #net{position:fixed;inset:0;width:100%;height:100%;z-index:0;display:block;background:#000;}
 
+  /* ---- premium liquid-metal loading screen ---- */
+  #loader{position:fixed;inset:0;z-index:99990;background:#000;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:26px;opacity:1;transition:opacity .65s ease}
+  #loader.out{opacity:0;pointer-events:none}
+  .ld-word{font-family:var(--serif);font-weight:700;font-size:46px;letter-spacing:-.03em;color:transparent;
+    background:linear-gradient(110deg,#3f464d 0%,#9aa3ad 18%,#eef2f5 32%,#5c646d 48%,#cdd5db 64%,#454c53 82%,#8a929c 100%);
+    background-size:250% 100%;-webkit-background-clip:text;background-clip:text;animation:ldSheen 2.2s linear infinite}
+  @keyframes ldSheen{from{background-position:200% 0}to{background-position:-50% 0}}
+  .ld-bar{width:min(320px,70vw);height:3px;border-radius:99px;background:#14181c;overflow:hidden;position:relative}
+  .ld-bar i{position:absolute;top:0;bottom:0;left:-40%;width:40%;border-radius:99px;
+    background:linear-gradient(90deg,transparent,#9aa3ad 30%,#eef2f5 50%,#9aa3ad 70%,transparent);
+    animation:ldSweep 1.4s ease-in-out infinite}
+  @keyframes ldSweep{to{left:100%}}
+  .ld-cap{font-family:var(--mono);font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:#5d6862}
+  @media (prefers-reduced-motion:reduce){ .ld-word,.ld-bar i{animation:none} }
+
   /* soft cursor spotlight — a quarter-sized white glow that trails the pointer,
      layered BEHIND the text and robot (native cursor stays for precision) */
   #spot{position:fixed;top:0;left:0;width:320px;height:320px;border-radius:50%;
@@ -424,6 +440,12 @@
 </style>
 </head>
 <body>
+<!-- premium liquid-metal loading screen — holds until the 3D robot has actually rendered -->
+<div id="loader" aria-hidden="true">
+  <div class="ld-word">Signal.</div>
+  <div class="ld-bar"><i></i></div>
+  <div class="ld-cap">initializing</div>
+</div>
 <div id="net" aria-hidden="true"></div>
 <section class="hero">
   <div class="hero-inner">
@@ -833,6 +855,25 @@ function glbBot(){
     btn.addEventListener("mouseleave", ()=>spd(0.6));
     btn.addEventListener("mousedown",  ()=>{ spd(2.4); setTimeout(()=>spd(btn.matches(":hover")?1:0.6),300); });
   }).catch(()=>{});
+})();
+
+/* ---------- loading screen: stays up until the 3D robot has actually rendered (has3d),
+   so the SVG fallback never flashes. A hard timeout guarantees the page always reveals. ---------- */
+(function loaderGate(){
+  const L=document.getElementById("loader"), stage=document.getElementById("robotStage");
+  if(!L) return;
+  const t0=performance.now(); let done=false;
+  function hide(){
+    if(done) return; done=true;
+    const wait=Math.max(0, 700-(performance.now()-t0)); // brief minimum so fast loads don't blink
+    setTimeout(()=>{ L.classList.add("out"); setTimeout(()=>{ try{L.remove();}catch(e){} }, 750); }, wait);
+  }
+  if(stage){
+    if(stage.classList.contains("has3d")) hide();
+    else new MutationObserver((m,o)=>{ if(stage.classList.contains("has3d")){ o.disconnect(); hide(); } })
+      .observe(stage,{attributes:true,attributeFilter:["class"]});
+  }
+  setTimeout(hide, 7000); // 3D unavailable → reveal the page (SVG fallback) rather than trap it
 })();
 
 /* ---------- cursor spotlight: a soft white light that trails the pointer behind content ---------- */
