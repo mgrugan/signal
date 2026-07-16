@@ -152,9 +152,21 @@
     letter-spacing:.06em;color:#9fb3a6;opacity:0;transition:opacity .4s ease;padding:0 16px}
   .robot-stage.busy .robot-pct,.robot-stage.busy .robot-cap{opacity:1}
   @media (max-width:860px){
-    .hero-inner{grid-template-columns:1fr;gap:22px;min-height:0} .hero-right{order:2;min-height:380px}
-    /* on small screens the viewport goes back in-flow below the form instead of full-bleed */
-    .robot-stage{position:relative;inset:auto;width:100%;max-width:340px;aspect-ratio:0.8}
+    .hero-inner{grid-template-columns:1fr;gap:30px;min-height:0;padding:36px 22px 44px}
+    .hero-right{order:2;min-height:0;margin-top:6px}
+    .masthead{padding:0 0 26px}
+    .title{font-size:50px;margin:14px 0 14px}
+    .sub{font-size:14.5px}
+    .panel{padding:26px 0 0}
+    /* stack the URL field and button; full-width tap targets */
+    .field{flex-direction:column}
+    .field input{min-width:0;width:100%}
+    .lm-btn{width:100%;min-height:52px}
+    .keyrow{flex-wrap:wrap}
+    .keyrow input[type=password],.keyrow input[type=text]{min-width:0;flex:1 1 100%}
+    #cancel{width:100%}
+    /* the 3D viewport goes back in-flow below the form instead of full-bleed */
+    .robot-stage{position:relative;inset:auto;width:100%;max-width:360px;aspect-ratio:0.8;margin:0 auto}
     .robot3d{transform:translate(-50%,-50%)}
     .ringsvg{width:88%;height:88%;left:50%}
     .robot{width:78%;height:88%;left:50%}
@@ -163,7 +175,14 @@
       radial-gradient(52% 60% at 50% 42%, rgba(180,210,190,.10), transparent 72%),
       radial-gradient(40% 44% at 50% 40%, rgba(61,220,132,.12), transparent 70%)}
   }
-  @media (max-width:480px){ .robot-stage{max-width:280px} .robot-pct{font-size:24px;bottom:44px} }
+  @media (max-width:480px){
+    .hero-inner{padding:28px 18px 36px}
+    .title{font-size:40px}
+    .eyebrow{font-size:10px;letter-spacing:.18em}
+    .robot-stage{max-width:300px}
+    .robot-pct{font-size:24px;bottom:44px}
+    .optrow .opt-note{flex-basis:100%;min-width:0}
+  }
 
   /* robot animation + cursor-tracking transforms (vars set by JS) */
   .r-float{animation:rFloat 4.2s ease-in-out infinite}
@@ -352,9 +371,22 @@
   .btn-ghost:hover{background:var(--net);border-color:var(--net);color:#04140b}
 
   @media (max-width:640px){
-    .title{font-size:46px}.rpt-name{font-size:30px}
+    .rpt-name{font-size:28px}
+    .rpt-head{padding:26px 0 18px}
     .scores,.grid2,.twocol{grid-template-columns:1fr}
-    .score:first-child{border-right:0;border-bottom:1.5px solid var(--ink)}
+    .twocol{gap:26px}
+    .score:first-child{border-right:0;border-bottom:1.5px solid #79828c}
+    .score{padding:18px 16px}
+    .exec{padding:16px 16px}
+    .exec p{font-size:14.5px}
+    .wrap{padding:0 18px}
+    /* the crawl table scrolls sideways inside its own box instead of stretching the page */
+    .ctable{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .ctable th{position:static}
+    .section{padding:24px 0}
+    .section h2{font-size:23px}
+    .toolbar{flex-direction:column;align-items:stretch;gap:16px;padding:22px 0 48px}
+    .toolbar .btn-ghost{width:100%;padding:14px 22px}
   }
 
   /* ---- print → PDF ---- */
