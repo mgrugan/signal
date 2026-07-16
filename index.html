@@ -604,12 +604,25 @@ function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) rin
   const s=document.createElement("script");
   s.type="module"; s.src="https://unpkg.com/@splinetool/viewer@1.9.48/build/spline-viewer.js";
   s.onerror=()=>{}; document.head.appendChild(s);
-  const killBadge=()=>{ try{ const sr=fr.shadowRoot; if(sr){ const l=sr.querySelector('#logo,[part="logo"],a[href*="spline.design"]'); if(l) l.style.display="none"; } }catch(e){} };
+  // Spline can re-inject its badge into the shadow DOM after load, so strip it persistently.
+  function killBadge(){
+    try{
+      const sr=fr.shadowRoot; if(!sr) return;
+      sr.querySelectorAll('a,[part="logo"],#logo').forEach(el=>{
+        const sig=((el.getAttribute&&el.getAttribute('href'))||"")+" "+(el.id||"")+" "+(el.className||"");
+        if(/spline|logo/i.test(sig)) el.style.setProperty("display","none","important");
+      });
+    }catch(e){}
+  }
+  // swap the SVG fallback out the instant Spline's real canvas exists (not on the `load`
+  // event, which doesn't reliably fire) so the SVG never lingers behind the 3D robot
+  function reveal(){ try{ if(fr.shadowRoot && fr.shadowRoot.querySelector("canvas")) stage.classList.add("has3d"); }catch(e){} }
   customElements.whenDefined("spline-viewer").then(()=>{
     fr.classList.add("on");
-    fr.addEventListener("load", ()=>{ stage.classList.add("has3d"); killBadge(); setTimeout(killBadge,600); }, {once:true});
-    fr.addEventListener("error", ()=>{ fr.classList.remove("on"); stage.classList.remove("has3d"); });
-    setTimeout(killBadge, 2500);
+    fr.addEventListener("load", ()=>{ stage.classList.add("has3d"); killBadge(); }, {once:true});
+    (function arm(){ const sr=fr.shadowRoot; if(sr){ killBadge(); reveal(); new MutationObserver(()=>{killBadge();reveal();}).observe(sr,{childList:true,subtree:true}); } else setTimeout(arm,150); })();
+    [300,800,1600,3000,6000].forEach(t=>setTimeout(()=>{killBadge();reveal();},t));
+    setTimeout(()=>stage.classList.add("has3d"), 5000); // hard fallback: never leave the SVG showing
   });
 })();
 
