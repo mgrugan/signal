@@ -799,6 +799,9 @@ function glbBot(){
   if(!host||!btn) return;
   const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if(reduce) return;
+  // the shader canvas mounts at the button's initial size and can't track the
+  // full-width mobile button — small/touch screens keep the static chrome ring instead
+  if(window.matchMedia && (matchMedia("(max-width:860px)").matches || matchMedia("(pointer:coarse)").matches)) return;
   import("https://esm.sh/@paper-design/shaders").then(m=>{
     const SM=m.ShaderMount, frag=m.liquidMetalFragmentShader||m.liquidMetal;
     if(!SM||!frag) return;
