@@ -152,35 +152,43 @@
     letter-spacing:.06em;color:#9fb3a6;opacity:0;transition:opacity .4s ease;padding:0 16px}
   .robot-stage.busy .robot-pct,.robot-stage.busy .robot-cap{opacity:1}
   @media (max-width:860px){
-    .hero-inner{grid-template-columns:1fr;gap:30px;min-height:0;padding:36px 22px 44px}
-    .hero-right{order:2;min-height:0;margin-top:6px}
-    .masthead{padding:0 0 26px}
-    .title{font-size:50px;margin:14px 0 14px}
+    .hero-inner{grid-template-columns:1fr;grid-template-rows:auto 1fr;gap:14px;
+      min-height:100vh;min-height:100svh;padding:34px 22px 0;align-items:start}
+    .hero-right{order:2;min-height:0;margin-top:0;align-items:stretch}
+    .masthead{padding:0 0 24px}
+    .title{font-size:48px;margin:14px 0 14px}
     .sub{font-size:14.5px}
-    .panel{padding:26px 0 0}
+    .panel{padding:24px 0 0}
     /* stack the URL field and button; full-width tap targets */
     .field{flex-direction:column}
     .field input{min-width:0;width:100%}
     .lm-btn{width:100%;min-height:52px}
+    /* CSS-only liquid chrome: a rotating conic ring that tracks any width
+       (the shader canvas can't, so it stays a desktop-only enhancement) */
+    .lm-shader{background:conic-gradient(from var(--ca),#3a4046,#dfe5ea 16%,#4a525a 36%,#c2cad2 54%,#3a4046 70%,#98a1aa 86%,#3a4046);
+      animation:chromeSpin 3.2s linear infinite}
     .keyrow{flex-wrap:wrap}
     .keyrow input[type=password],.keyrow input[type=text]{min-width:0;flex:1 1 100%}
     #cancel{width:100%}
-    /* the 3D viewport goes back in-flow below the form instead of full-bleed */
-    .robot-stage{position:relative;inset:auto;width:100%;max-width:360px;aspect-ratio:0.8;margin:0 auto}
-    .robot3d{transform:translate(-50%,-50%)}
-    .ringsvg{width:88%;height:88%;left:50%}
-    .robot{width:78%;height:88%;left:50%}
+    /* the robot becomes a bottom-anchored bust rising from the edge of the screen —
+       full-bleed width, cropped by the hero, soft glow behind the head */
+    .robot-stage{position:relative;inset:auto;width:100vw;max-width:none;aspect-ratio:auto;
+      height:100%;min-height:30svh;margin:0 -22px;overflow:hidden}
+    .robot3d{width:150%;height:170%;transform:translate(-50%,-24%)}
+    .ringsvg{width:min(340px,80vw);height:min(340px,80vw);left:50%;top:auto;bottom:-10%;transform:translate(-50%,0)}
+    .robot{width:78%;height:130%;left:50%;top:auto;bottom:-40%;transform:translate(-50%,0)}
     .robot-pct,.robot-cap{left:0}
+    .robot-pct{bottom:30px}
     .robot-spot{background:
-      radial-gradient(52% 60% at 50% 42%, rgba(180,210,190,.10), transparent 72%),
-      radial-gradient(40% 44% at 50% 40%, rgba(61,220,132,.12), transparent 70%)}
+      radial-gradient(60% 55% at 50% 72%, rgba(180,210,190,.10), transparent 70%),
+      radial-gradient(44% 40% at 50% 70%, rgba(61,220,132,.12), transparent 68%)}
   }
   @media (max-width:480px){
-    .hero-inner{padding:28px 18px 36px}
+    .hero-inner{padding:26px 18px 0}
     .title{font-size:40px}
     .eyebrow{font-size:10px;letter-spacing:.18em}
-    .robot-stage{max-width:300px}
-    .robot-pct{font-size:24px;bottom:44px}
+    .robot-stage{margin:0 -18px}
+    .robot-pct{font-size:24px}
     .optrow .opt-note{flex-basis:100%;min-width:0}
   }
 
