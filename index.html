@@ -593,13 +593,38 @@ function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) rin
   })();
 })();
 
-/* ---------- 3D robot: our own robot.glb rendered with Three.js. The GLB (a Spline mesh
-   export) ships with NO materials, so we dress it here — glossy carbon-black PBR body,
-   dark-glass visor, studio key/fill + green rim to match the theme. Only the "Head"
-   node tracks the cursor; the body never moves. No watermark: it's just a mesh. ---------- */
+/* ---------- 3D robot, tried in order:
+   1) Spline's ORIGINAL nexbot demo scene via @splinetool/runtime. The watermark is tied
+      to the scene owner's plan, and this scene is Spline's own demo — it embeds badge-free
+      and has the native head-follows-cursor behavior.
+   2) Our robot.glb rendered with Three.js (glossy PBR + green rim, head-only tracking).
+   3) The inline SVG robot.
+   ---------- */
 (function robot3d(){
   const cv=document.getElementById("robot3d"), stage=document.getElementById("robotStage");
   if(!cv||!stage) return;
+  const SCENE="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode";
+  import("https://esm.sh/@splinetool/runtime").then(m=>{
+    const App=m.Application;
+    if(!App) return glbBot();
+    cv.classList.add("on");
+    let app;
+    try{ app=new App(cv); }catch(e){ cv.classList.remove("on"); return glbBot(); }
+    app.load(SCENE)
+      .then(()=>{ stage.classList.add("has3d"); })
+      .catch(()=>{ cv.classList.remove("on"); glbBot(); });
+  }).catch(glbBot);
+
+/* ---------- fallback: robot.glb with Three.js. The GLB (a Spline mesh export) ships with
+   NO materials, so we dress it here — glossy carbon-black PBR body, dark-glass visor,
+   studio key/fill + green rim to match the theme. Only the "Head" node tracks the cursor;
+   the body never moves. ---------- */
+function glbBot(){
+  // Spline may have grabbed a context on the shared canvas — render into a fresh one
+  const old=document.getElementById("robot3d");
+  const cv=document.createElement("canvas");
+  cv.id="robot3d"; cv.className="robot3d"; cv.setAttribute("aria-hidden","true");
+  old.replaceWith(cv);
   const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const V="0.160.0";
   Promise.all([
@@ -688,6 +713,7 @@ function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) rin
       requestAnimationFrame(loop);
     })();
   }).catch(()=>{ /* CDN unavailable → SVG fallback stays */ });
+}
 })();
 
 /* ---------- liquid-metal shader wrapping the RUN AUDIT button (progressive enhancement;
