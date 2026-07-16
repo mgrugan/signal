@@ -111,7 +111,7 @@
   .robot-stage{position:relative;width:100%;max-width:460px;aspect-ratio:1/1.08;overflow:visible;background:transparent}
   .robot-spot{position:absolute;inset:0;pointer-events:none;z-index:0;background:
     radial-gradient(46% 42% at 50% 46%, rgba(61,220,132,.10), transparent 70%)}
-  .ringsvg{position:absolute;top:50%;left:50%;width:86%;height:86%;transform:translate(-50%,-50%);opacity:0;transition:opacity .5s ease;z-index:20}
+  .ringsvg{position:absolute;top:50%;left:50%;width:88%;height:88%;transform:translate(-50%,-50%);opacity:0;transition:opacity .5s ease;z-index:1}
   .robot-stage.busy .ringsvg{opacity:1}
   .robot-stage.busy.indet .ringsvg{animation:ringSpin 1.2s linear infinite}
   .ring-prog2{transition:stroke-dashoffset .55s cubic-bezier(.4,0,.2,1)}
@@ -123,7 +123,7 @@
   .robot3d.on{display:block}
   .robot-stage.has3d .robot{display:none}
   .robot-spot{z-index:0}
-  .robot-pct,.robot-cap{z-index:21}
+  .robot-pct,.robot-cap{z-index:7}
   .robot-pct{position:absolute;left:0;right:0;bottom:52px;text-align:center;font-family:var(--serif);font-weight:700;
     font-size:30px;letter-spacing:-.02em;color:#EAF2EC;opacity:0;transition:opacity .4s ease;text-shadow:0 2px 14px rgba(0,0,0,.5)}
   .robot-cap{position:absolute;left:0;right:0;bottom:22px;text-align:center;font-family:var(--mono);font-size:11.5px;
@@ -602,14 +602,14 @@ function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) rin
     window.addEventListener("mousemove", e=>{
       const nx=Math.max(-1,Math.min(1,(e.clientX/innerWidth  - 0.5)*2));
       const ny=Math.max(-1,Math.min(1,(e.clientY/innerHeight - 0.5)*2));
-      tt=nx*26; tp=88-ny*9;
+      tt=nx*16; tp=88-ny*5;
     }, {passive:true});
     (function orbit(){
-      if(robotBusy){
-        if(!reduce && !mv.hasAttribute("auto-rotate")){ mv.setAttribute("auto-rotate-delay","0"); mv.setAttribute("rotation-per-second","40deg"); mv.setAttribute("auto-rotate",""); }
-      } else {
-        if(mv.hasAttribute("auto-rotate")) mv.removeAttribute("auto-rotate");
-        if(!reduce){ try{ mv.cameraOrbit = tt.toFixed(1)+"deg "+tp.toFixed(1)+"deg auto"; }catch(e){} }
+      if(mv.hasAttribute("auto-rotate")) mv.removeAttribute("auto-rotate");
+      if(!reduce){
+        // while an audit runs, hold the clean front pose (no spin = the head never clips);
+        // when idle, lean gently toward the pointer
+        try{ mv.cameraOrbit = robotBusy ? "0deg 88deg auto" : (tt.toFixed(1)+"deg "+tp.toFixed(1)+"deg auto"); }catch(e){}
       }
       requestAnimationFrame(orbit);
     })();
