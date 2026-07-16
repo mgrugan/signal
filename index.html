@@ -37,8 +37,19 @@
 
   /* ---- premium liquid-metal loading screen ---- */
   #loader{position:fixed;inset:0;z-index:99990;background:#000;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;gap:26px;opacity:1;transition:opacity .65s ease}
+    align-items:center;justify-content:center;gap:26px;opacity:1;transition:opacity .65s ease;overflow:hidden}
   #loader.out{opacity:0;pointer-events:none}
+  /* flowing molten-chrome backdrop behind the wordmark */
+  #loader::before{content:"";position:absolute;inset:-22%;pointer-events:none;
+    background:
+      radial-gradient(42% 56% at 30% 36%, rgba(154,163,173,.15), transparent 62%),
+      radial-gradient(46% 62% at 72% 62%, rgba(96,104,112,.13), transparent 60%),
+      radial-gradient(30% 40% at 56% 22%, rgba(226,233,238,.07), transparent 55%),
+      radial-gradient(36% 44% at 44% 78%, rgba(70,77,84,.12), transparent 58%);
+    filter:blur(46px);animation:ldFlow 9s ease-in-out infinite alternate}
+  @keyframes ldFlow{from{transform:rotate(0deg) scale(1)}to{transform:rotate(9deg) scale(1.1)}}
+  #loader .ld-word,#loader .ld-bar,#loader .ld-cap{position:relative;z-index:1}
+  @media (prefers-reduced-motion:reduce){ #loader::before{animation:none} }
   .ld-word{font-family:var(--serif);font-weight:700;font-size:46px;letter-spacing:-.03em;color:transparent;
     background:linear-gradient(110deg,#3f464d 0%,#9aa3ad 18%,#eef2f5 32%,#5c646d 48%,#cdd5db 64%,#454c53 82%,#8a929c 100%);
     background-size:250% 100%;-webkit-background-clip:text;background-clip:text;animation:ldSheen 2.2s linear infinite}
