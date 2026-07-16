@@ -6,7 +6,7 @@
 <title>Signal — SEO &amp; GEO Audit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Onest:wght@500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Onest:wght@500;600;700;800&family=Space+Mono:wght@400;700&family=Inter:wght@100;300&display=swap" rel="stylesheet">
 <style>
   :root{
     --paper:#080a0c;    /* solid near-black (cells / fallbacks) */
@@ -35,32 +35,46 @@
   /* completely black backdrop — fixed behind all content */
   #net{position:fixed;inset:0;width:100%;height:100%;z-index:0;display:block;background:#000;}
 
-  /* ---- premium liquid-metal loading screen ---- */
-  #loader{position:fixed;inset:0;z-index:99990;background:#000;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;gap:26px;opacity:1;transition:opacity .65s ease;overflow:hidden}
+  /* ---- premium liquid-metal loading screen (Stitch design) ---- */
+  #loader{position:fixed;inset:0;z-index:99990;background:#000;display:flex;
+    align-items:center;justify-content:center;opacity:1;transition:opacity .65s ease;overflow:hidden}
   #loader.out{opacity:0;pointer-events:none}
-  /* flowing molten-chrome backdrop behind the wordmark */
+  /* molten fallback shows only if WebGL is unavailable (the shader canvas covers it otherwise) */
   #loader::before{content:"";position:absolute;inset:-22%;pointer-events:none;
     background:
       radial-gradient(42% 56% at 30% 36%, rgba(154,163,173,.15), transparent 62%),
       radial-gradient(46% 62% at 72% 62%, rgba(96,104,112,.13), transparent 60%),
-      radial-gradient(30% 40% at 56% 22%, rgba(226,233,238,.07), transparent 55%),
-      radial-gradient(36% 44% at 44% 78%, rgba(70,77,84,.12), transparent 58%);
+      radial-gradient(30% 40% at 56% 22%, rgba(226,233,238,.07), transparent 55%);
     filter:blur(46px);animation:ldFlow 9s ease-in-out infinite alternate}
   @keyframes ldFlow{from{transform:rotate(0deg) scale(1)}to{transform:rotate(9deg) scale(1.1)}}
-  #loader .ld-word,#loader .ld-bar,#loader .ld-cap{position:relative;z-index:1}
-  @media (prefers-reduced-motion:reduce){ #loader::before{animation:none} }
-  .ld-word{font-family:var(--serif);font-weight:700;font-size:46px;letter-spacing:-.03em;color:transparent;
-    background:linear-gradient(110deg,#3f464d 0%,#9aa3ad 18%,#eef2f5 32%,#5c646d 48%,#cdd5db 64%,#454c53 82%,#8a929c 100%);
-    background-size:250% 100%;-webkit-background-clip:text;background-clip:text;animation:ldSheen 2.2s linear infinite}
-  @keyframes ldSheen{from{background-position:200% 0}to{background-position:-50% 0}}
-  .ld-bar{width:min(320px,70vw);height:3px;border-radius:99px;background:#14181c;overflow:hidden;position:relative}
-  .ld-bar i{position:absolute;top:0;bottom:0;left:-40%;width:40%;border-radius:99px;
-    background:linear-gradient(90deg,transparent,#9aa3ad 30%,#eef2f5 50%,#9aa3ad 70%,transparent);
-    animation:ldSweep 1.4s ease-in-out infinite}
-  @keyframes ldSweep{to{left:100%}}
-  .ld-cap{font-family:var(--mono);font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:#5d6862}
-  @media (prefers-reduced-motion:reduce){ .ld-word,.ld-bar i{animation:none} }
+  #ldgl{position:absolute;inset:0;width:100%;height:100%;opacity:.6}
+  .ld-stack{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;
+    text-align:center;gap:42px;will-change:transform}
+  .ld-glyph{width:48px;height:48px;border:1px solid rgba(255,255,255,.2);border-radius:4px;
+    transform:rotate(45deg);display:flex;align-items:center;justify-content:center;
+    animation:ldInG 2.5s cubic-bezier(.22,1,.36,1) .2s both}
+  @keyframes ldInG{from{opacity:0;transform:rotate(45deg) translateY(10px)}to{opacity:1;transform:rotate(45deg) translateY(0)}}
+  .ld-glyph i{width:12px;height:12px;background:#fff;border-radius:50%}
+  .ld-pct{font-family:"Inter",var(--sans);font-weight:100;font-size:120px;line-height:1;letter-spacing:-.05em;
+    color:transparent;background:linear-gradient(to bottom,#ffffff 0%,rgba(255,255,255,.2) 100%);
+    -webkit-background-clip:text;background-clip:text;animation:ldIn 2.5s cubic-bezier(.22,1,.36,1) .5s both}
+  .ld-status{display:flex;align-items:center;gap:16px;animation:ldIn 2.5s cubic-bezier(.22,1,.36,1) .8s both}
+  .ld-rule{width:64px;height:1px;background:rgba(255,255,255,.1)}
+  .ld-label{font-family:var(--mono);font-size:12px;letter-spacing:.4em;text-transform:uppercase;color:#e5e2e1;white-space:nowrap}
+  .ld-track{width:240px;height:1px;background:rgba(255,255,255,.1);overflow:hidden;
+    animation:ldIn 2.5s cubic-bezier(.22,1,.36,1) .8s both}
+  .ld-fill{height:100%;width:0;background:#fff;box-shadow:0 0 20px rgba(255,255,255,.15);transition:width .3s ease-out}
+  .ld-meta{display:flex;gap:32px;opacity:.3;animation:ldIn 2.5s cubic-bezier(.22,1,.36,1) .8s both}
+  .ld-meta span{font-family:var(--mono);font-size:10px;letter-spacing:.02em;white-space:nowrap}
+  @keyframes ldIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  @media (max-width:640px){
+    .ld-pct{font-size:76px} .ld-stack{gap:32px}
+    .ld-rule{width:36px} .ld-label{font-size:10.5px;letter-spacing:.3em}
+    .ld-meta{gap:16px;flex-wrap:wrap;justify-content:center;padding:0 20px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    #loader::before,.ld-glyph,.ld-pct,.ld-status,.ld-track,.ld-meta{animation:none}
+  }
 
   /* soft cursor spotlight — a quarter-sized white glow that trails the pointer,
      layered BEHIND the text and robot (native cursor stays for precision) */
@@ -451,11 +465,21 @@
 </style>
 </head>
 <body>
-<!-- premium liquid-metal loading screen — holds until the 3D robot has actually rendered -->
+<!-- premium liquid-metal loading screen (Stitch: "Premium Liquid Metal Loading Screen")
+     — holds until the 3D robot has actually rendered -->
 <div id="loader" aria-hidden="true">
-  <div class="ld-word">Signal.</div>
-  <div class="ld-bar"><i></i></div>
-  <div class="ld-cap">initializing</div>
+  <canvas id="ldgl"></canvas>
+  <div class="ld-stack">
+    <div class="ld-glyph"><i></i></div>
+    <div class="ld-pct" id="ldPct">00%</div>
+    <div class="ld-status">
+      <span class="ld-rule"></span>
+      <span class="ld-label" id="ldLabel">INITIALIZING</span>
+      <span class="ld-rule"></span>
+    </div>
+    <div class="ld-track"><div class="ld-fill" id="ldFill"></div></div>
+    <div class="ld-meta"><span>ENGINE: SEO+GEO</span><span>KEY: LOCAL-ONLY</span><span>VER: 2.0-STABLE</span></div>
+  </div>
 </div>
 <div id="net" aria-hidden="true"></div>
 <section class="hero">
@@ -868,23 +892,116 @@ function glbBot(){
   }).catch(()=>{});
 })();
 
-/* ---------- loading screen: stays up until the 3D robot has actually rendered (has3d),
-   so the SVG fallback never flashes. A hard timeout guarantees the page always reveals. ---------- */
+/* ---------- loading screen (Stitch "Premium Liquid Metal"): mercury WebGL shader +
+   organic progress counter. Progress rides to 92% while the 3D robot streams in, rushes
+   to 100% the moment it has rendered (has3d), then fades — so the SVG never flashes.
+   A hard timeout guarantees the page always reveals. ---------- */
 (function loaderGate(){
   const L=document.getElementById("loader"), stage=document.getElementById("robotStage");
   if(!L) return;
-  const t0=performance.now(); let done=false;
-  function hide(){
-    if(done) return; done=true;
-    const wait=Math.max(0, 700-(performance.now()-t0)); // brief minimum so fast loads don't blink
-    setTimeout(()=>{ L.classList.add("out"); setTimeout(()=>{ try{L.remove();}catch(e){} }, 750); }, wait);
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* — the Stitch liquid-metal / mercury shader, verbatim — */
+  (function shader(){
+    if(reduce) return;
+    const canvas=document.getElementById("ldgl"); if(!canvas) return;
+    function syncSize(){ const w=canvas.clientWidth||1280,h=canvas.clientHeight||720;
+      if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} }
+    if(typeof ResizeObserver!=="undefined") new ResizeObserver(syncSize).observe(canvas);
+    syncSize();
+    let gl; try{ gl=canvas.getContext("webgl")||canvas.getContext("experimental-webgl"); }catch(e){ return; }
+    if(!gl) return;
+    const vs=`attribute vec2 a_position;varying vec2 v_texCoord;
+void main(){v_texCoord=a_position*0.5+0.5;gl_Position=vec4(a_position,0.0,1.0);}`;
+    const fs=`precision highp float;
+uniform float u_time;uniform vec2 u_resolution;varying vec2 v_texCoord;
+void main(){
+  vec2 uv=v_texCoord;
+  vec2 p=(uv*2.0-1.0);
+  p.x*=u_resolution.x/u_resolution.y;
+  float t=u_time*0.4;
+  for(float i=1.0;i<4.0;i++){
+    p.x+=0.3/i*sin(i*3.0*p.y+t+i);
+    p.y+=0.3/i*cos(i*3.0*p.x+t+i);
   }
+  float v=sin(p.x+p.y+t);
+  float spec=pow(max(0.0,1.0-abs(v)),20.0);
+  float glow=0.05/abs(v);
+  vec3 color=vec3(0.02);
+  color+=vec3(0.8,0.8,0.9)*spec;
+  color+=vec3(0.3,0.3,0.35)*glow;
+  color=pow(color,vec3(1.2));
+  gl_FragColor=vec4(color,1.0);
+}`;
+    function cs(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);return s;}
+    const prog=gl.createProgram();
+    gl.attachShader(prog,cs(gl.VERTEX_SHADER,vs));
+    gl.attachShader(prog,cs(gl.FRAGMENT_SHADER,fs));
+    gl.linkProgram(prog); gl.useProgram(prog);
+    const buf=gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+    const pos=gl.getAttribLocation(prog,"a_position");
+    gl.enableVertexAttribArray(pos);
+    gl.vertexAttribPointer(pos,2,gl.FLOAT,false,0,0);
+    const uTime=gl.getUniformLocation(prog,"u_time"), uRes=gl.getUniformLocation(prog,"u_resolution");
+    (function render(t){
+      if(!document.getElementById("ldgl")) return; // loader removed → stop
+      gl.viewport(0,0,canvas.width,canvas.height);
+      if(uTime) gl.uniform1f(uTime,t*0.001);
+      if(uRes) gl.uniform2f(uRes,canvas.width,canvas.height);
+      gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+      requestAnimationFrame(render);
+    })(0);
+  })();
+
+  /* — organic progress, gated on the robot actually rendering — */
+  const pct=document.getElementById("ldPct"), fill=document.getElementById("ldFill"), label=document.getElementById("ldLabel");
+  const statuses=["AUTHENTICATING SECURE UPLINK","SYNCING NEURAL INTERFACE","CALIBRATING CORE MODULES",
+                  "ALLOCATING MEMORY BLOCKS","ESTABLISHING HANDSHAKE","READY FOR ACCESS"];
+  let progress=0, ready=false, done=false;
+  function paint(){
+    if(pct) pct.textContent=String(Math.floor(progress)).padStart(2,"0")+"%";
+    if(fill) fill.style.width=progress+"%";
+    if(!label) return;
+    if(progress>=100) label.textContent=statuses[5];
+    else if(progress>95) label.textContent=statuses[4];
+    else if(progress>80) label.textContent=statuses[3];
+    else if(progress>60) label.textContent=statuses[2];
+    else if(progress>40) label.textContent=statuses[1];
+    else if(progress>20) label.textContent=statuses[0];
+  }
+  function finish(){
+    if(done) return; done=true;
+    setTimeout(()=>{ L.classList.add("out"); setTimeout(()=>{ try{L.remove();}catch(e){} }, 750); }, 420);
+  }
+  let lastT=performance.now();
+  (function tick(){
+    if(done) return;
+    const now=performance.now(), dt=Math.min(0.25,(now-lastT)/1000); lastT=now;
+    // time-based so the pace is identical at any frame rate
+    progress=Math.min(ready?100:92, progress + (ready?190:Math.random()*90)*dt);
+    paint();
+    if(ready && progress>=100){ finish(); return; }
+    requestAnimationFrame(tick);
+  })();
+  function go(){ ready=true; }
   if(stage){
-    if(stage.classList.contains("has3d")) hide();
-    else new MutationObserver((m,o)=>{ if(stage.classList.contains("has3d")){ o.disconnect(); hide(); } })
+    if(stage.classList.contains("has3d")) go();
+    else new MutationObserver((m,o)=>{ if(stage.classList.contains("has3d")){ o.disconnect(); go(); } })
       .observe(stage,{attributes:true,attributeFilter:["class"]});
   }
-  setTimeout(hide, 7000); // 3D unavailable → reveal the page (SVG fallback) rather than trap it
+  setTimeout(go, 8000); // 3D unavailable → complete anyway (SVG fallback) rather than trap the page
+
+  /* — subtle parallax on the center stack, as in the Stitch screen — */
+  if(!reduce){
+    const st=L.querySelector(".ld-stack");
+    addEventListener("mousemove", e=>{
+      if(!st||done) return;
+      const x=(e.clientX/innerWidth-.5), y=(e.clientY/innerHeight-.5);
+      st.style.transform="translate("+(x*10).toFixed(1)+"px,"+(y*10).toFixed(1)+"px)";
+    }, {passive:true});
+  }
 })();
 
 /* ---------- cursor spotlight: a soft white light that trails the pointer behind content ---------- */
