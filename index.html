@@ -124,9 +124,12 @@
   .robot{position:absolute;top:50%;left:50%;width:78%;height:88%;transform:translate(-50%,-50%);overflow:visible;z-index:1}
   /* Higgsfield 3D robot (shown only once its GLB actually loads; SVG is the fallback).
      scale() shrinks the whole render to guarantee headroom regardless of camera framing. */
-  .robot3d{position:absolute;top:50%;left:50%;width:100%;height:100%;transform:translate(-50%,-50%) scale(0.96);
-    z-index:2;display:none;background:transparent;--poster-color:transparent;--progress-bar-color:transparent;outline:none}
+  .robot3d{position:absolute;top:50%;left:50%;width:100%;height:100%;transform:translate(-50%,-50%);
+    z-index:2;display:none;background:transparent;outline:none}
   .robot3d.on{display:block}
+  /* render the scene in-page (not an iframe) so we can hide Spline's badge + keep the bg transparent */
+  spline-viewer::part(logo){display:none!important}
+  spline-viewer{background:transparent!important}
   .robot-stage.has3d .robot{display:none}
   .robot-spot{z-index:0}
   .robot-pct,.robot-cap{z-index:7}
@@ -370,12 +373,9 @@
     <div class="hero-right">
       <div class="robot-stage" id="robotStage">
         <div class="robot-spot"></div>
-        <model-viewer id="robot3d" class="robot3d"
-          src="robot.glb"
-          autoplay animation-name=""
-          camera-orbit="0deg 90deg auto" field-of-view="26deg" camera-target="auto auto auto" interpolation-decay="110"
-          interaction-prompt="none" environment-image="neutral" shadow-intensity="0.55" shadow-softness="1" exposure="1.35" tone-mapping="neutral"
-          disable-zoom loading="eager" aria-hidden="true"></model-viewer>
+        <spline-viewer id="robot3d" class="robot3d"
+          url="https://prod.spline.design/PQlVmYGLehloI5Nr/scene.splinecode"
+          loading-anim-type="none" aria-hidden="true"></spline-viewer>
         <svg class="ringsvg" viewBox="0 0 300 300" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="1">
@@ -595,34 +595,21 @@ function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) rin
 })();
 
 /* ---------- optional Higgsfield 3D robot (model-viewer). Loads from a CDN and only
-   replaces the SVG once the GLB actually renders; any failure leaves the SVG in place. ---------- */
+   reveals over the SVG fallback once the Spline scene renders in-page. Because it's a
+   web component (not an iframe) we can hide the badge and keep the background transparent.
+   Cursor-follow / posing are handled inside the Spline scene itself. ---------- */
 (function robot3d(){
-  const mv=document.getElementById("robot3d"), stage=document.getElementById("robotStage");
-  if(!mv||!stage||!window.customElements) return;
-  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const fr=document.getElementById("robot3d"), stage=document.getElementById("robotStage");
+  if(!fr||!stage||!window.customElements) return;
   const s=document.createElement("script");
-  s.type="module"; s.src="https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js";
+  s.type="module"; s.src="https://unpkg.com/@splinetool/viewer@1.9.48/build/spline-viewer.js";
   s.onerror=()=>{}; document.head.appendChild(s);
-  customElements.whenDefined("model-viewer").then(()=>{
-    mv.classList.add("on");
-    mv.addEventListener("load", ()=>{ stage.classList.add("has3d"); }, {once:true});
-    mv.addEventListener("error", ()=>{ mv.classList.remove("on"); stage.classList.remove("has3d"); });
-    // track the pointer across the whole window, mapped to a gentle camera swing
-    let tt=0, tp=90;
-    window.addEventListener("mousemove", e=>{
-      const nx=Math.max(-1,Math.min(1,(e.clientX/innerWidth  - 0.5)*2));
-      const ny=Math.max(-1,Math.min(1,(e.clientY/innerHeight - 0.5)*2));
-      tt=nx*16; tp=90-ny*5;
-    }, {passive:true});
-    (function orbit(){
-      if(mv.hasAttribute("auto-rotate")) mv.removeAttribute("auto-rotate");
-      if(!reduce){
-        // while an audit runs, hold the clean front pose (no spin = the head never clips);
-        // when idle, lean gently toward the pointer
-        try{ mv.cameraOrbit = robotBusy ? "0deg 90deg auto" : (tt.toFixed(1)+"deg "+tp.toFixed(1)+"deg auto"); }catch(e){}
-      }
-      requestAnimationFrame(orbit);
-    })();
+  const killBadge=()=>{ try{ const sr=fr.shadowRoot; if(sr){ const l=sr.querySelector('#logo,[part="logo"],a[href*="spline.design"]'); if(l) l.style.display="none"; } }catch(e){} };
+  customElements.whenDefined("spline-viewer").then(()=>{
+    fr.classList.add("on");
+    fr.addEventListener("load", ()=>{ stage.classList.add("has3d"); killBadge(); setTimeout(killBadge,600); }, {once:true});
+    fr.addEventListener("error", ()=>{ fr.classList.remove("on"); stage.classList.remove("has3d"); });
+    setTimeout(killBadge, 2500);
   });
 })();
 
