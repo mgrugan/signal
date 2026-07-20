@@ -354,13 +354,17 @@
 
   /* ---- readiness breakdown ---- */
   .bd{border:1px solid var(--hair);margin-top:4px}
-  .bd-row{display:grid;grid-template-columns:190px 78px 1fr;gap:14px;align-items:center;padding:12px 15px;border-bottom:1px solid var(--hair)}
+  .bd-row{display:grid;grid-template-columns:190px 78px 72px 1fr;gap:14px;align-items:center;padding:12px 15px;border-bottom:1px solid var(--hair)}
   .bd-row:last-child{border-bottom:0}
   .bd-dim{font-family:var(--mono);font-size:12px;color:var(--ink)}
-  .bd-note{font-size:13px;color:var(--slate);line-height:1.4}
+  .bd-pts{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--ink);text-align:right;white-space:nowrap}
+  .bd-pts span{color:var(--slate);font-weight:400}
+  .bd-total{border-top:1.5px solid #79828c;background:var(--panel-solid)}
+  .bd-total .bd-dim{font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+  .bd-total .bd-pts{font-size:14px}
   .rate{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 0;border:1px solid currentColor;text-align:center}
   .rate.strong{color:var(--good)} .rate.partial{color:var(--warn)} .rate.weak{color:var(--bad)}
-  @media (max-width:640px){ .bd-row{grid-template-columns:1fr 78px} .bd-note{grid-column:1/-1} }
+  @media (max-width:640px){ .bd-row{grid-template-columns:1fr 78px 72px} .bd-note{grid-column:1/-1} }
 
   /* ---- quick wins ---- */
   .qwins{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--hair);border:1px solid var(--hair);margin-top:4px}
@@ -1778,10 +1782,16 @@ function render(D){
       <div><div class="at">${esc(a.action)}</div><div class="aw">${esc(a.why)}</div>
       ${a.how?`<div class="ah"><b>How</b>${esc(a.how)}</div>`:""}</div></li>`).join("")}</ul>`;
 
-  // readiness breakdown rows (dimension · rating pill · measured note)
+  // readiness breakdown rows (dimension · rating pill · points · measured note),
+  // with a total row — the per-dimension points sum to the headline score
   const rate = r => { const k = r==="strong"?"strong":r==="weak"?"weak":"partial"; return `<span class="rate ${k}">${esc(r||"partial")}</span>`; };
-  const breakdown = items => `<div class="bd">${(items||[]).map(d=>`
-    <div class="bd-row"><div class="bd-dim">${esc(d.label)}</div>${rate(d.rating)}<div class="bd-note">${esc(d.note)}</div></div>`).join("")}</div>`;
+  const fmtPts = v => Number.isInteger(v) ? String(v) : v.toFixed(1);
+  const breakdown = (items, total) => {
+    const sum = (items||[]).reduce((a,d)=>a+(d.got||0),0);
+    return `<div class="bd">${(items||[]).map(d=>`
+    <div class="bd-row"><div class="bd-dim">${esc(d.label)}</div>${rate(d.rating)}<div class="bd-pts">${fmtPts(d.got)}<span> / ${d.max}</span></div><div class="bd-note">${esc(d.note)}</div></div>`).join("")}
+    <div class="bd-row bd-total"><div class="bd-dim">Total</div><span></span><div class="bd-pts">${total!=null?total:Math.round(sum)}<span> / 100</span></div><div class="bd-note">${Number.isInteger(sum)?"sum of the points above":`points above sum to ${fmtPts(sum)}, rounded`}</div></div></div>`;
+  };
   // quick-win cards
   const qwins = items => `<div class="qwins">${(items||[]).slice(0,3).map((q,i)=>`
     <div class="qwin"><div class="qn">Quick win ${String(i+1).padStart(2,"0")}</div>
@@ -1819,9 +1829,9 @@ function render(D){
       <h2>Readiness breakdown</h2>
       <p class="bd-intro">Every rating below is measured straight from the page${multi?"s":""} — same input, same result every run. The GEO rubric follows the Princeton GEO study (Aggarwal et al., KDD 2024: quotations, statistics and cited sources are the top measured visibility levers; keyword stuffing hurts) and RAG retrieval mechanics (semantic chunking, schema depth, entity authority, freshness).</p>
       <div class="col-head g">GEO · AI answer engines — ${geoScore}/100</div>
-      ${breakdown(D.geoBreak.dims)}
+      ${breakdown(D.geoBreak.dims, D.geoBreak.score)}
       <div class="col-head s" style="margin-top:24px">SEO · classic search — ${seoScore}/100</div>
-      ${breakdown(D.seoBreak.dims)}
+      ${breakdown(D.seoBreak.dims, D.seoBreak.score)}
     </section>`;
 
   if(ai && ai.quick_wins && ai.quick_wins.length){
