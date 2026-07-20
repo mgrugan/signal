@@ -319,6 +319,15 @@
   .queries .q-i{color:var(--geo);font-weight:700;flex:none}
 
   .sim{border:1px solid var(--hair);border-left:3px solid var(--geo);padding:18px 20px;margin-bottom:16px;background:var(--panel-solid)}
+  /* separate findability score card (independent of live citations) */
+  .find-agg{display:flex;align-items:center;gap:18px;margin:0 0 18px;padding:16px 18px;
+    border:1.5px solid transparent;background:
+    linear-gradient(var(--panel-solid),var(--panel-solid)) padding-box,
+    linear-gradient(150deg,#9aa3ad 0%,#4a525a 22%,#d6dde3 42%,#3c434b 62%,#aab3bc 82%,#5c646d 100%) border-box}
+  .find-agg .fa-n{font-family:var(--serif);font-weight:700;font-size:40px;line-height:1;letter-spacing:-.02em;color:var(--ink);white-space:nowrap}
+  .find-agg .fa-n span{font-size:16px;color:var(--slate);font-weight:400}
+  .find-agg .fa-t{font-size:13px;color:var(--slate);line-height:1.55}
+  .find-agg .fa-t b{color:var(--ink)}
   .sim .sq{font-family:var(--mono);font-size:13px;color:var(--geo);margin-bottom:9px}
   .sim .sq::before{content:"ask ▸ ";color:var(--slate)}
   .sim .sa{font-size:15px;line-height:1.55;color:var(--ink)}
@@ -1094,12 +1103,15 @@ function extractSEO(html, url, mode){
     const freq = {}; clean.forEach(w=>freq[w]=(freq[w]||0)+1);
     for(let i=0;i<clean.length-1;i++){ const b=clean[i]+" "+clean[i+1]; freq[b]=(freq[b]||0)+1.4; }
     const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).filter(([k])=>k.length>3).slice(0,12).map(([k])=>k);
+    const quoteCount = (text.match(/[“"][^”"]{40,240}[”"]/g)||[]).length;
+    const attribCues = (text.match(/\baccording to\b|\b(?:said|says|notes|explains|reports)\s+[A-Z]/g)||[]).length;
     return {url, title:tm?tm[1].trim():"", desc:"", canon:"", viewport:null, lang:"", robots:"",
       h1:[], h2:[], h3:[], imgCount:0, altCoverage:null, structured:null, og:null,
       internal:null, external:null, internalLinks:[], wordCount:words.length, topTerms:top, partial:true,
       schemaCount:0, hasOrg:false, hasArticleSchema:false, hasQaSchema:false, hasPersonSchema:false, hasSameAs:false,
       dateVal:null, qHeadings:0, hasFAQ:false, listCount:0, liCount:0, tableCount:0, semantic:false,
-      statDensity:0, hasSummaryCue:false, hasAuthor:false};
+      statDensity:0, hasSummaryCue:false, hasAuthor:false,
+      quoteCount, attribCues, wordsPerHeading:null, textSample:text.slice(0,9000)};
   }
   const doc = new DOMParser().parseFromString(html, "text/html");
   const get = (sel,attr) => { const el=doc.querySelector(sel); return el?(attr?el.getAttribute(attr):el.textContent.trim()):""; };
@@ -1171,6 +1183,11 @@ function extractSEO(html, url, mode){
   const statDensity = wordCount ? statMatches.length/(wordCount/100) : 0;  // stats per 100 words
   const hasSummaryCue = /\b(in summary|tl;dr|key takeaways?|in short|at a glance|the bottom line|overview:|in brief)\b/i.test(text.slice(0,6000)) || (desc||"").length>0;
   const hasAuthor = !!doc.querySelector('meta[name="author"],[rel~="author"]') || hasPersonSchema || /"author"\s*:/.test(ldRaw) || /\bby\s+[A-Z][a-z]+\s+[A-Z][a-z]+/.test(text.slice(0,4000));
+  // Princeton GEO signals: quotations + expert attribution (top visibility levers in the study),
+  // and RAG chunking quality (how much prose each heading has to carry)
+  const quoteCount = doc.querySelectorAll("blockquote,q").length + (text.match(/[“"][^”"]{40,240}[”"]/g)||[]).length;
+  const attribCues = (text.match(/\baccording to\b|\b(?:said|says|notes|explains|reports)\s+[A-Z]/g)||[]).length;
+  const wordsPerHeading = wordCount ? Math.round(wordCount/Math.max(1,h2.length+h3.length)) : null;
 
   // unigrams + bigrams
   const freq = {};
@@ -1186,7 +1203,8 @@ function extractSEO(html, url, mode){
     // GEO signals
     schemaCount:ldTypes.size, hasOrg, hasArticleSchema, hasQaSchema, hasPersonSchema, hasSameAs,
     dateVal, qHeadings, hasFAQ, listCount, liCount, tableCount, semantic,
-    statDensity, hasSummaryCue, hasAuthor};
+    statDensity, hasSummaryCue, hasAuthor,
+    quoteCount, attribCues, wordsPerHeading, textSample:text.slice(0,9000)};
 }
 
 /* ---------- transparent SEO score from real signals ---------- */
@@ -1245,24 +1263,53 @@ function seoDims(s){
 
 // GEO dimensions (sum to 100) — weighted to the Princeton/industry GEO findings:
 // statistics + citations, direct answers, FAQ/schema, freshness, crawler access.
+/* Deterministic GEO rubric (100 pts), grounded in two sources:
+   [P] Aggarwal et al., "GEO: Generative Engine Optimization" (KDD '24, arXiv:2311.09735) —
+       measured visibility lifts: Quotation Addition ≈ +40% (top), Statistics Addition and
+       Cite Sources ≈ +30-35%; Keyword Stuffing UNDERPERFORMS the unoptimized baseline.
+   [R] Rayhan, "GEO: Mechanics, Strategy, and Economic Impact" — RAG mechanics: semantic
+       chunking for the retrieval window, schema as the machine-readability backbone,
+       entity authority (E-E-A-T 2.0), freshness bias, clean extractable HTML. */
 function geoDims(s, access){
   const now = Date.now();
-  let sd=0; if(s.schemaCount){ sd+=5; if(s.hasOrg) sd+=4; if(s.hasArticleSchema) sd+=3; if(s.hasQaSchema) sd+=5; if(s.hasPersonSchema) sd+=3; } sd=Math.min(20,sd);
-  let ar=0; if(s.hasFAQ) ar+=7; ar+=Math.min(5,(s.qHeadings||0)*2.5); if(s.hasSummaryCue) ar+=6; ar=Math.min(18,Math.round(ar));
-  const statPts=Math.min(10, (s.statDensity||0)>=1?10:Math.round((s.statDensity||0)*10));
-  const citePts=Math.min(8, (s.external||0)>=5?8:Math.round((s.external||0)/5*8));
-  const fd=statPts+citePts;
-  let ex=0; ex+=Math.min(7,(s.listCount||0)*2+Math.floor((s.liCount||0)/8)); if(s.tableCount) ex+=5; ex=Math.min(12,ex);
-  let au=0; if(s.hasAuthor) au+=6; if(s.dateVal){ au+=6; const wks=(now-s.dateVal)/6048e5; if(wks<=13) au+=4; else if(wks<=52) au+=2; } au=Math.min(16,au);
-  let en=0; if(s.hasOrg) en+=4; if(s.hasSameAs) en+=4;
+  // [P] quotations + expert attribution — the study's single biggest visibility lever
+  let qu=0; qu+=Math.min(5,(s.quoteCount||0)*2.5); qu+=Math.min(3,(s.attribCues||0)*1.5); qu=Math.min(8,Math.round(qu));
+  // [P] statistics addition / [R] semantic density, with the paper's keyword-stuffing penalty
+  let st=Math.min(11, (s.statDensity||0)>=1?11:Math.round((s.statDensity||0)*11));
+  let stuffed=false;
+  if(!s.partial && s.wordCount>120 && s.topTerms && s.topTerms.length){
+    const t=s.topTerms[0]; if(t && !t.includes(" ")){
+      const c=(((s.textSample||"").toLowerCase()).match(new RegExp("\\b"+t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","g"))||[]).length;
+      const sampleWords=Math.min(s.wordCount, Math.round((s.textSample||"").length/6)||1);
+      if(c/sampleWords>0.03){ st=Math.max(0,st-3); stuffed=true; }
+    }
+  }
+  st=Math.min(14, st + Math.min(3, Math.floor((s.statDensity||0))));
+  // [P] cite sources — outbound citations to verifiable references
+  const ci=Math.min(10, (s.external||0)>=5?10:Math.round((s.external||0)/5*10));
+  // [R] answer-first + semantic chunking: direct answers up top, self-contained sections
+  let ar=0; if(s.hasFAQ) ar+=5; ar+=Math.min(4,(s.qHeadings||0)*2); if(s.hasSummaryCue) ar+=3;
+  if(s.wordsPerHeading!=null){ if(s.wordsPerHeading<=250) ar+=2; else if(s.wordsPerHeading>600) ar-=1; }
+  ar=Math.max(0,Math.min(14,Math.round(ar)));
+  // [R] schema depth — "the Rosetta Stone of GEO"
+  let sd=0; if(s.schemaCount){ sd+=4; if(s.hasOrg) sd+=3; if(s.hasArticleSchema) sd+=3; if(s.hasQaSchema) sd+=4; if(s.hasPersonSchema) sd+=2; } sd=Math.min(16,sd);
+  // [R] entity authority (E-E-A-T 2.0): named author + Person schema + sameAs graph links
+  let en=0; if(s.hasAuthor) en+=4; if(s.hasPersonSchema) en+=3; if(s.hasOrg) en+=3; if(s.hasSameAs) en+=2; en=Math.min(12,en);
+  // [R] freshness — generative engines premium recent, dated content
+  let fr=0; if(s.dateVal){ fr+=4; const wks=(now-s.dateVal)/6048e5; if(wks<=13) fr+=6; else if(wks<=52) fr+=3; } fr=Math.min(10,fr);
+  // [P/R] extractable formatting — lists/tables are the chunks engines quote verbatim
+  let ex=0; ex+=Math.min(5,(s.listCount||0)*2+Math.floor((s.liCount||0)/8)); if(s.tableCount) ex+=3; ex=Math.min(8,ex);
+  // [R] AI crawler access — if it can't be retrieved it can't be cited
   let ca=0; if(access){ ca += (access.allowsAI!==false) ? (access.robotsPresent?4:3) : 0; if(access.llmsPresent) ca+=4; }
   return [
-    {label:"Structured data & schema", got:sd, max:20, note:s.schemaCount?`${s.schemaCount} schema type${s.schemaCount>1?"s":""}${s.hasQaSchema?" incl. FAQ/HowTo":s.hasOrg?" incl. Organization":""}`:"no JSON-LD"},
-    {label:"Answer-ready content", got:ar, max:18, note:`${s.hasFAQ?"FAQ present · ":""}${s.qHeadings||0} question heading${(s.qHeadings||0)===1?"":"s"}`},
-    {label:"Fact density & citations", got:fd, max:18, note:`${(s.statDensity||0).toFixed(1)} stats/100 words · ${s.external||0} outbound links`},
-    {label:"Extractable formatting", got:ex, max:12, note:`${s.listCount||0} lists · ${s.tableCount||0} tables`},
-    {label:"Authority & freshness", got:au, max:16, note:`${s.hasAuthor?"author":"no author"} · ${s.dateVal?"dated":"no date"}`},
-    {label:"Entity & brand clarity", got:en, max:8, agg:"max", note:`${s.hasOrg?"Organization schema":"no org schema"}${s.hasSameAs?" + sameAs":""}`},
+    {label:"Quotations & expert voice", got:qu, max:8, note:`${s.quoteCount||0} quote${(s.quoteCount||0)===1?"":"s"} · ${s.attribCues||0} attribution${(s.attribCues||0)===1?"":"s"} (top lever, Princeton study)`},
+    {label:"Statistics & fact density", got:st, max:14, note:`${(s.statDensity||0).toFixed(1)} stats/100 words${stuffed?" · keyword stuffing detected (penalised — it lowers AI visibility)":""}`},
+    {label:"Cited sources", got:ci, max:10, note:`${s.external||0} outbound reference link${(s.external||0)===1?"":"s"}`},
+    {label:"Answer-first & chunking", got:ar, max:14, note:`${s.hasFAQ?"FAQ · ":""}${s.qHeadings||0} question heading${(s.qHeadings||0)===1?"":"s"}${s.wordsPerHeading!=null?` · ~${s.wordsPerHeading} words/section`:""}`},
+    {label:"Schema depth", got:sd, max:16, note:s.schemaCount?`${s.schemaCount} schema type${s.schemaCount>1?"s":""}${s.hasQaSchema?" incl. FAQ/HowTo":s.hasOrg?" incl. Organization":""}`:"no JSON-LD"},
+    {label:"Entity authority (E-E-A-T)", got:en, max:12, agg:"max", note:`${s.hasAuthor?"author":"no author"}${s.hasPersonSchema?" · Person schema":""}${s.hasOrg?" · Organization":""}${s.hasSameAs?" · sameAs":""}`},
+    {label:"Freshness", got:fr, max:10, note:s.dateVal?`dated ${new Date(s.dateVal).toISOString().slice(0,10)}`:"no visible date"},
+    {label:"Extractable formatting", got:ex, max:8, note:`${s.listCount||0} lists · ${s.tableCount||0} tables`},
     {label:"AI crawler access", got:ca, max:8, agg:"max", note:access?`${access.robotsPresent?(access.allowsAI===false?"robots blocks AI bots":"robots allows AI"):"no robots.txt"} · ${access.llmsPresent?"llms.txt present":"no llms.txt"}`:"not checked"}
   ];
 }
@@ -1434,13 +1481,19 @@ ${JSON.stringify(measured)}
 
 ${scope} is the subject. Judge from the crawl aggregates when present (recurring, site-wide gaps outweigh single-page issues). Your actions must directly attack the weak dimensions listed above.
 
-Write like the reports Ahrefs / Semrush / Profound / Peec deliver: specific, concrete, copy-pasteable. Every action names the exact thing to do — the schema type, the exact heading/FAQ wording, the exact tag. Ground GEO advice in how LLM answer engines actually select and cite sources:
-- ANSWER-FIRST content: a direct 2-3 sentence answer at the top of a page/section (44% of AI citations come from the first 30% of a page).
-- Fact density: add verifiable statistics, named entities and dates — roughly one every 100 words (the single biggest lever in the Princeton GEO study), each with a cited source link.
-- Q&A / FAQ blocks phrased as the exact questions people ask, with FAQPage schema.
-- Structured data: Organization (sameAs to social/Wikipedia/Wikidata), Article (author + datePublished + dateModified), Person, FAQPage, HowTo, BreadcrumbList.
-- E-E-A-T & freshness: named authors with credentials, citations to primary sources, visible last-updated dates (50% of AI-cited content is under 13 weeks old).
-- Extractable formatting: bullet lists, comparison tables, definitions — the chunks LLMs quote.
+Write like the reports Ahrefs / Semrush / Profound / Peec deliver: specific, concrete, copy-pasteable. Every action names the exact thing to do — the schema type, the exact heading/FAQ wording, the exact tag. Ground every GEO action in the published research:
+FROM THE PRINCETON GEO STUDY (Aggarwal et al., KDD 2024 — measured on 10K queries):
+- QUOTATION ADDITION is the single top lever (~+40% visibility): add quotable expert quotes with named attribution ('According to X, ...').
+- STATISTICS ADDITION (~+30-35%): replace qualitative claims with verifiable numbers ('12ms, 40% faster' beats 'very fast').
+- CITE SOURCES (~+30%): outbound links to credible primary references next to each claim.
+- Fluency + easy-to-understand phrasing help; KEYWORD STUFFING measurably HURTS AI visibility (below unoptimized baseline) — never recommend it, and flag it if present.
+FROM RAG MECHANICS (how answer engines actually retrieve → augment → generate):
+- SEMANTIC CHUNKING: self-contained sections under clear headings (~150-300 words each); the direct answer in the first 2-3 sentences of the section, since engines pull top-scoring chunks, not whole pages.
+- SEMANTIC DENSITY: noun-heavy, entity-rich sentences that map to the query's vector space; vague marketing jargon never gets retrieved.
+- SCHEMA MARKUP is the machine-readability backbone: Organization (sameAs to social/Wikipedia/Wikidata), Article (author + datePublished + dateModified), Person, FAQPage, HowTo, BreadcrumbList — deeply NESTED, not isolated blocks.
+- ENTITY AUTHORITY (E-E-A-T 2.0): named authors with credentials + Person schema; consistent brand-entity associations; engines bias toward earned/third-party media, so recommend citable neutral references where relevant.
+- FRESHNESS: visible dateModified — engines premium recent content (half of AI-cited pages are under ~13 weeks old).
+- CLEAN EXTRACTABLE HTML: real <ul>/<ol>/<table> tags (comparison tables win 'X vs Y' queries), low markup noise.
 Note: the tool already generates robots.txt / llms.txt for the user when missing, so only mention those if there is a specific nuance.
 
 Return ONLY valid JSON (no markdown, no backticks), EXACTLY this shape. Keep strings tight and concrete:
@@ -1451,7 +1504,7 @@ Return ONLY valid JSON (no markdown, no backticks), EXACTLY this shape. Keep str
  "seo_summary":"one blunt sentence on classic-search readiness${siteWide?" across the crawled pages":""}",
  "geo_summary":"one blunt sentence on AI-answer readiness",
  "quick_wins":[{"action":"the single most worth-it fix, specific","impact":"high|med","effort":"low|med"}],
- "related_queries":["6-8 real questions this audience types into Google or an AI"],
+ "related_queries":["10-12 real questions this audience types into Google or an AI, highest-intent first"],
  "ai_simulations":[{"query":"one of the queries","ai_answer":"how an AI answer engine would actually respond, 2 sentences","would_cite":true|false,"why":"<=14 words on whether this site earns the citation","findability":"easy|moderate|hard","findability_note":"<=12 words on how easily a clear answer to THIS query could be found and extracted from THIS site (easy = a direct answer or FAQ exists; moderate = present but buried in prose; hard = not on the site)"}],
  "seo_actions":[{"action":"imperative, specific fix","priority":"high|med|low","why":"<=12 words on the payoff","how":"exact steps or example wording, <=24 words"}],
  "geo_actions":[{"action":"imperative, specific GEO fix","priority":"high|med|low","why":"<=12 words on the payoff","how":"exact steps, schema type, or example FAQ/heading wording, <=24 words"}]
@@ -1515,20 +1568,94 @@ const AI_SCHEMA = {
   required:["topic","executive_summary","seo_summary","geo_summary","quick_wins","related_queries","ai_simulations","seo_actions","geo_actions"]
 };
 
-async function geminiOnce(model, prompt, key){
+async function geminiRaw(model, key, body){
   const url = "https://generativelanguage.googleapis.com/v1beta/models/"+model+":generateContent?key="+encodeURIComponent(key);
-  const r = await fetch(url,{
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      contents:[{parts:[{text:prompt}]}],
-      generationConfig:{responseMimeType:"application/json", responseSchema:AI_SCHEMA, temperature:0.4, maxOutputTokens:8192}
-    })
-  });
+  const r = await fetch(url,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
   let d; try{ d = await r.json(); }catch(e){ const err=new Error("HTTP "+r.status); err.code=r.status; throw err; }
   if(d.error){ const err=new Error(d.error.message||("HTTP "+r.status)); err.code=d.error.code||r.status; throw err; }
-  const raw = (d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts||[]).map(p=>p.text||"").join("");
+  return d;
+}
+function geminiText(d){
+  return (d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts||[]).map(p=>p.text||"").join("");
+}
+async function geminiOnce(model, prompt, key, schema){
+  // temperature 0 → the same crawl data yields the same report every run
+  const d = await geminiRaw(model, key, {
+    contents:[{parts:[{text:prompt}]}],
+    generationConfig:{responseMimeType:"application/json", responseSchema:schema||AI_SCHEMA, temperature:0, maxOutputTokens:8192}
+  });
+  const raw = geminiText(d);
   if(!raw){ const err=new Error("empty response (safety block or quota)"); err.code=0; throw err; }
   return raw;
+}
+
+/* ---------- live grounded answers: ask Gemini WITH Google Search grounding, so the answer
+   is what the model actually says when reading real, current search results — and the
+   "cited" verdict comes from the REAL grounding sources, not a guess. ---------- */
+async function groundedAsk(query, key){
+  const d = await geminiRaw(GEMINI_MODEL, key, {
+    contents:[{parts:[{text:
+      "Answer this exactly the way an AI search answer (like Google's AI mode) would — concise, factual, 2-4 sentences, grounded in current web results. Query: \""+query+"\""}]}],
+    tools:[{google_search:{}}],
+    generationConfig:{temperature:0, maxOutputTokens:1024}
+  });
+  const answer = geminiText(d).trim();
+  if(!answer) throw new Error("empty grounded response");
+  const gm = d.candidates && d.candidates[0] && d.candidates[0].groundingMetadata || {};
+  const chunks = gm.groundingChunks || [];
+  const sources = [];
+  chunks.forEach(c=>{
+    const w=c.web||{}; const t=(w.title||"").trim(); const u=w.uri||"";
+    const dom = /\./.test(t) && !/\s/.test(t) ? t.toLowerCase() : (u ? (u.match(/https?:\/\/([^/]+)/)||[])[1] : "");
+    if(t||dom) sources.push({title:t||dom, domain:(dom||"").replace(/^www\./,""), uri:u});
+  });
+  return { answer, sources };
+}
+async function runGroundedSims(queries, siteHost, key){
+  const out=[]; let hardFails=0;
+  const host=(siteHost||"").replace(/^www\./,"").toLowerCase();
+  for(const q of queries){
+    try{
+      conLine("  ⌕ live-grounded: “"+q.slice(0,64)+"”", "t-net");
+      const g = await groundedAsk(q, key);
+      const cited = g.sources.some(s=> (s.domain&&host&&(s.domain===host||s.domain.endsWith("."+host))) || (s.title||"").toLowerCase().includes(host) );
+      const names = [...new Set(g.sources.map(s=>s.domain||s.title).filter(Boolean))].slice(0,5);
+      out.push({ query:q, ai_answer:g.answer, would_cite:cited, sources:names,
+        why: cited ? "your site appears in the live grounding sources"
+                   : (names.length ? "grounding cited "+names.slice(0,3).join(", ")+" — not this site" : "no grounding sources returned") });
+      conLine("    "+(cited?"✓ CITED — your site is in the real sources":"✗ not cited"+(names.length?" (sources: "+names.slice(0,3).join(", ")+")":"")), cited?"t-ok":"t-warn");
+      hardFails=0;
+      await sleepMs(400); // stay friendly to free-tier rate limits
+    }catch(e){
+      conLine("    ✗ grounded ask failed: "+(e.message||e).slice(0,60), "t-bad");
+      if(++hardFails>=2){ conLine("  → live grounding unavailable — falling back to modeled simulations", "t-warn"); break; }
+    }
+  }
+  return out;
+}
+
+/* ---------- separate findability score: how easily could an LLM find + extract the answer
+   to each query FROM THIS SITE'S OWN CONTENT — scored 0-100 per query, deterministic. ---------- */
+const FIND_SCHEMA = { type:"OBJECT", properties:{
+  items:{ type:"ARRAY", items:{ type:"OBJECT", properties:{
+    query:{type:"STRING"}, score:{type:"INTEGER"}, note:{type:"STRING"} }, required:["query","score","note"] } }
+}, required:["items"] };
+async function findabilityCheck(queries, s, key){
+  const prompt = `You are scoring FINDABILITY: for each query, how easily an AI answer engine could locate and extract a direct answer FROM THIS SITE'S OWN CONTENT ONLY (not the wider web).
+Scoring rubric (deterministic, be strict): 90-100 a dedicated, directly-quotable answer exists (FAQ entry, definition, table); 60-89 the answer is present but must be assembled from prose; 30-59 only partial/implied information exists; 0-29 the site does not contain the answer.
+SITE: ${s.url}
+TITLE: ${s.title||""}
+META DESCRIPTION: ${s.desc||""}
+HEADINGS: ${JSON.stringify([...(s.h1||[]),...(s.h2||[]),...(s.h3||[])].slice(0,30))}
+CONTENT (extracted text, may be truncated):
+${(s.textSample||"").slice(0,8500)}
+QUERIES: ${JSON.stringify(queries)}
+Return JSON {items:[{query,score,note}]} — one item per query, same order; note <=14 words naming exactly where the answer lives or what is missing.`;
+  const raw = await geminiOnce(GEMINI_MODEL, prompt, key, FIND_SCHEMA);
+  const parsed = parseAIJson(raw);
+  const items = (parsed.items||[]).map(x=>({query:x.query, score:Math.max(0,Math.min(100,Math.round(x.score||0))), note:x.note||""}));
+  const score = items.length ? Math.round(items.reduce((a,x)=>a+x.score,0)/items.length) : null;
+  return { items, score };
 }
 
 async function callAI(s, metrics, site){
@@ -1690,7 +1817,7 @@ function render(D){
     <section class="section">
       <div class="kicker g">${nn()} — how ready you are, dimension by dimension</div>
       <h2>Readiness breakdown</h2>
-      <p class="bd-intro">Every rating below is measured straight from the page${multi?"s":""} — same input, same result every run.</p>
+      <p class="bd-intro">Every rating below is measured straight from the page${multi?"s":""} — same input, same result every run. The GEO rubric follows the Princeton GEO study (Aggarwal et al., KDD 2024: quotations, statistics and cited sources are the top measured visibility levers; keyword stuffing hurts) and RAG retrieval mechanics (semantic chunking, schema depth, entity authority, freshness).</p>
       <div class="col-head g">GEO · AI answer engines — ${geoScore}/100</div>
       ${breakdown(D.geoBreak.dims)}
       <div class="col-head s" style="margin-top:24px">SEO · classic search — ${seoScore}/100</div>
@@ -1726,7 +1853,26 @@ function render(D){
     const queries = `<ol class="queries">${(ai.related_queries||[]).map((q,i)=>
       `<li><span class="q-i">${String(i+1).padStart(2,"0")}</span><span>${esc(q)}</span></li>`).join("")}</ol>`;
     const findFlag = f => { const k=(f||"").toLowerCase(); const cls=k==="easy"?"ok":k==="hard"?"miss":"meh"; return `<span class="flag ${cls}">answer ${esc(f||"moderate")} to find</span>`; };
-    const sims = (ai.ai_simulations||[]).map(x=>`
+    const fmap = {}; ((D.find&&D.find.items)||[]).forEach(f=>{ fmap[(f.query||"").toLowerCase()]=f; });
+    const findPill = q => {
+      const f=fmap[(q||"").toLowerCase()]; if(!f) return "";
+      const cls=f.score>=70?"ok":f.score>=40?"meh":"miss";
+      return `<div class="cite"><span class="flag ${cls}">findability ${f.score}/100</span><span>${esc(f.note||"")}</span></div>`;
+    };
+    const live = D.grounded && D.grounded.length;
+    const sims = live
+      ? D.grounded.map(x=>`
+      <div class="sim">
+        <div class="sq">${esc(x.query)}</div>
+        <div class="sa">${esc(x.ai_answer)}</div>
+        <div class="cite">${x.would_cite
+          ? `<span class="flag ok">cited — live sources include you</span>`
+          : `<span class="flag miss">not cited in live sources</span>`}
+          <span>${esc(x.why)}</span></div>
+        ${x.sources&&x.sources.length?`<div class="chips">${x.sources.map(s=>`<span class="chip">${esc(s)}</span>`).join("")}</div>`:""}
+        ${findPill(x.query)}
+      </div>`).join("")
+      : (ai.ai_simulations||[]).map(x=>`
       <div class="sim">
         <div class="sq">${esc(x.query)}</div>
         <div class="sa">${esc(x.ai_answer)}</div>
@@ -1734,8 +1880,13 @@ function render(D){
           ? `<span class="flag ok">would cite you</span>`
           : `<span class="flag miss">won't cite you</span>`}
           <span>${esc(x.why)}</span></div>
-        <div class="cite">${findFlag(x.findability)}<span>${esc(x.findability_note||"")}</span></div>
+        ${findPill(x.query) || `<div class="cite">${findFlag(x.findability)}<span>${esc(x.findability_note||"")}</span></div>`}
       </div>`).join("");
+    const findAgg = (D.find && D.find.score!=null) ? `
+      <div class="find-agg">
+        <div class="fa-n">${D.find.score}<span>/100</span></div>
+        <div class="fa-t"><b>Findability score</b> — a separate measure: how easily an AI could locate and extract each answer from your own pages (scored per query below). Independent of whether live engines cite you today.</div>
+      </div>` : "";
     body += `
     <section class="section">
       <div class="kicker g">${nn()} — the questions your audience asks</div>
@@ -1744,9 +1895,11 @@ function render(D){
     </section>
 
     <section class="section">
-      <div class="kicker g">${nn()} — what the AI says, whether you're cited, and how easy your answer was to find</div>
-      <h2>Answer-engine simulation</h2>
+      <div class="kicker g">${nn()} — ${live?"real answers from live Google Search grounding — verbatim, with the actual cited sources":"what the AI says, whether you're cited, and how easy your answer was to find"}</div>
+      <h2>Answer-engine ${live?"results · live":"simulation"}</h2>
+      ${findAgg}
       ${sims}
+      ${live?`<p class="note" style="margin-top:14px">Answers above are verbatim model output grounded in live Google Search results at audit time — the same retrieval layer AI answer modes draw from. Live results naturally shift as the web changes; your deterministic SEO/GEO scores do not.</p>`:""}
     </section>
 
     <section class="section">
@@ -1804,6 +1957,29 @@ window.copyPre = b => { const pre=b.parentNode.parentNode.querySelector("pre"); 
 
 /* ---------- orchestrate ---------- */
 let LAST = null; // {seo, seoScore, site} — lets "Retry AI" re-run just the AI step
+
+// After the narrative call: (1) ask the top queries WITH live Google Search grounding so the
+// answers + citations are real, and (2) score findability of each answer on the site itself.
+async function aiExtras(D, alive){
+  const key = getKey();
+  if(!key || !D.ai) return;
+  const ok = () => !alive || alive();
+  const queries = (D.ai.related_queries||[]).slice(0,6);
+  if(queries.length){
+    conLine("Asking "+queries.length+" queries with LIVE Google Search grounding (real answers, real sources) …", "t-net");
+    try{ D.grounded = await runGroundedSims(queries, hostOf(D.seo.url), key); }catch(e){ D.grounded=null; }
+    if(!ok()) return;
+    if(D.grounded && D.grounded.length){
+      const hits=D.grounded.filter(x=>x.would_cite).length;
+      conLine("  → cited in "+hits+"/"+D.grounded.length+" live grounded answers", hits?"t-ok":"t-warn");
+    }
+    conLine("Scoring findability of each answer on your own site …", "t-net");
+    try{
+      D.find = await findabilityCheck(queries, D.seo, key);
+      if(D.find && D.find.score!=null) conLine("  → findability "+D.find.score+"/100 (how extractable your answers are)", D.find.score>=70?"t-ok":"t-warn");
+    }catch(e){ D.find=null; conLine("  ✗ findability scoring failed: "+(e.message||e).slice(0,60), "t-warn"); }
+  }
+}
 let RUN_SEQ = 0; // bumping this cancels any in-flight audit (its results are discarded)
 const heroLeft = document.querySelector(".hero-left");
 function liveMode(on){ if(heroLeft) heroLeft.classList.toggle("auditing", !!on); }
@@ -1867,7 +2043,7 @@ async function run(){
     const seoBreak = aggregateDims(scorePages, seoDims, null);
     const geoBreak = aggregateDims(scorePages, geoDims, access);
     const geoScore = geoBreak.score;
-    conLine("  • GEO score "+geoScore+"/100 (schema · answers · fact density · formatting · authority · entity · crawler access)", "t-ok");
+    conLine("  • GEO score "+geoScore+"/100 (quotes · stats · sources · answer-first · schema · entity · freshness · formatting · access — Princeton GEO rubric)", "t-ok");
 
     // ---- generate robots.txt / llms.txt if the site is missing them ----
     const gen = {};
@@ -1887,6 +2063,8 @@ async function run(){
     conLine("Asking the AI answer engine ("+(getKey()?GEMINI_MODEL:"preview model")+")"+(site?" for a site-wide read":"")+" …", "t-net");
     try{
       D.ai = await callAI(seo, metrics, site);
+      if(!alive()) return;
+      await aiExtras(D, alive);   // live-grounded answers + separate findability score
       if(!alive()) return;
       conLine("✓ audit complete — SEO "+D.seoScore+"/100 · GEO "+geoScore+"/100. Rendering report ▾", "t-ok");
     }catch(e){
@@ -1932,6 +2110,7 @@ window.retryAI = async function(){
   try{
     LAST.ai = await callAI(LAST.seo, LAST.metrics, LAST.site);
     LAST.aiErr = null;
+    await aiExtras(LAST);
     conLine("✓ AI analysis complete — GEO "+LAST.geoScore+"/100", "t-ok");
     botHide(); liveMode(false); render(LAST);
     $("#report").scrollIntoView({behavior:"smooth"});
