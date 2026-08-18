@@ -776,12 +776,51 @@ function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) rin
     lift:0.07,   // levitation height (GLB: fraction of height; Spline: scene units ×600)
     bob:0.018
   };
-  // The GLB renderer is primary: same robot mesh as the Spline scene, but with full
-  // joint control (the meditation pose) and drawable eyes — every pose is screenshot-
-  // verified against exactly what ships. (The Spline runtime's proxies applied our
-  // rotations against different rest frames — twisted legs, frozen hands — and its
-  // baked eye texture can't be closed.)
-  glbBot();
+  import("https://esm.sh/@splinetool/runtime").then(m=>{
+    const App=m.Application;
+    if(!App) return glbBot();
+    cv.classList.add("on");
+    let app;
+    try{ app=new App(cv); }catch(e){ cv.classList.remove("on"); return glbBot(); }
+    app.load(SCENE)
+      .then(()=>{ stage.classList.add("has3d"); /* splineMonk disabled — the runtime's rest
+        frames differ from the GLB rig, so the pose came out twisted on the live scene */ })
+      .catch(()=>{ cv.classList.remove("on"); glbBot(); });
+  }).catch(glbBot);
+
+  // Spline-path meditation: pose the same joints via the runtime's object proxies.
+  // Fully defensive — if the scene's node names don't match, the robot just keeps standing.
+  function splineMonk(app){
+    if(!app.getAllObjects) return;
+    const all=app.getAllObjects();
+    const grab=n=>all.filter(o=>{ const nm=(o.name||"").trim(); return nm===n||nm.replace(/\s+/g,"_")===n.replace(/\s+/g,"_"); });
+    const wrap=o=>({o, rest:{x:o.rotation.x, y:o.rotation.y, z:o.rotation.z}, s:(o.position.x>=0?1:-1)});
+    const rig={ femur:grab("femur").map(wrap), shin:grab("shin").map(wrap),
+                arm:grab("arm").map(wrap), elbow:grab("elbow").map(wrap),
+                top:grab("Top part").map(wrap) };
+    if(!rig.femur.length) return;   // scene doesn't expose the skeleton — skip gracefully
+    const bot=grab("Bot")[0]||null, botRestY=bot?bot.position.y:0;
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let pT=0;
+    (function sLoop(t){
+      const el=document.getElementById("robot3d");
+      if(!el || el.tagName!=="CANVAS" ) return;          // canvas swapped out → stop
+      pT += (((robotBusy&&!reduce)?1:0)-pT)*0.055;
+      const e=pT*pT*(3-2*pT);
+      try{
+        for(const k of ["femur","shin","arm","elbow","top"]){
+          const d=MEDPOSE[k];
+          rig[k].forEach(j=>{
+            j.o.rotation.x=j.rest.x + d.x*e;
+            j.o.rotation.y=j.rest.y + (d.ys||0)*j.s*e;
+            j.o.rotation.z=j.rest.z + (d.zs||0)*j.s*e;
+          });
+        }
+        if(bot) bot.position.y = botRestY + MEDPOSE.lift*600*e + (e>0?Math.sin(t*0.0021)*MEDPOSE.bob*600*e:0);
+      }catch(err){ return; } // proxies went stale → stop posing, scene stays alive
+      requestAnimationFrame(sLoop);
+    })(0);
+  }
 
 /* ---------- fallback: robot.glb with Three.js. The GLB (a Spline mesh export) ships with
    NO materials, so we dress it here — glossy carbon-black PBR body, dark-glass visor,
@@ -853,7 +892,6 @@ function glbBot(){
       camera.lookAt(0,0,0);
       baseY=model.position.y; modelH=size.y;
       try{ rig=collectRig(model); }catch(e){ rig=null; try{console.error("rig:",e);}catch(_){} }
-      try{ buildEyes(); }catch(e){ try{console.error("eyes:",e);}catch(_){} }
       cv.classList.add("on");
       stage.classList.add("has3d"); // real robot is up → drop the SVG fallback
     }, undefined, err=>{ try{console.error("GLB load failed:", err&&err.message||err);}catch(_){} });
@@ -880,31 +918,6 @@ function glbBot(){
     // pose deltas — shared MEDPOSE from the outer scope; s mirrors left/right joints
     const POSE=MEDPOSE;
     window.__setPose=v=>{ poseT=Math.max(0,Math.min(1,v)); };
-
-    // ---- eyes: soft white dots when awake, thin white slits (eyes shut) while meditating ----
-    let eyesOpen=[], eyesClosed=[];
-    function buildEyes(){
-      if(!head) return;
-      head.updateWorldMatrix(true,true);
-      const hb=new THREE.Box3().setFromObject(head);
-      const hc=hb.getCenter(new THREE.Vector3()), hs=hb.getSize(new THREE.Vector3());
-      const E=Object.assign({sep:0.17, up:0.04, zpad:0.02, w:0.17, h:0.030, dot:0.050}, window.__EYES||{});
-      window.__EYES=E;
-      const mk=(geo)=>new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:0xf2fbff, transparent:true, opacity:0, depthWrite:false, side:THREE.DoubleSide}));
-      // children inherit the head node's tiny world scale (~0.008) — counter it,
-      // or the eye geometry (sized in world units) renders microscopic
-      const ws=head.getWorldScale(new THREE.Vector3()).x || 1;
-      const place=(mesh,sx)=>{
-        const wp=new THREE.Vector3(hc.x+sx*hs.x*E.sep, hc.y+hs.y*E.up, hb.max.z+hs.z*E.zpad);
-        head.worldToLocal(wp); mesh.position.copy(wp); mesh.scale.setScalar(1/ws); head.add(mesh);
-      };
-      for(const sx of [-1,1]){
-        const o=mk(new THREE.CircleGeometry(hs.y*E.dot, 24)); place(o,sx); eyesOpen.push(o);
-        const c=mk(new THREE.PlaneGeometry(hs.x*E.w, hs.y*E.h)); place(c,sx); eyesClosed.push(c);
-      }
-      eyesOpen.forEach(m=>m.material.opacity=0.95);
-      window.__eyes={open:eyesOpen, closed:eyesClosed, head:head};
-    }
     function applyPose(p, t){
       if(!rig) return;
       const e=p*p*(3-2*p); // smoothstep
@@ -948,9 +961,6 @@ function glbBot(){
       poseT += ((meditating?1:0)-poseT)*0.055;    // ease into / out of the lotus
       if(model && rig && poseT>0.001) applyPose(poseT, t||0);
       else if(model && rig && poseT<=0.001 && model.rotation.y!==0) applyPose(0, t||0);
-      if(eyesOpen.length){ const ec=poseT*poseT*(3-2*poseT);   // eyes shut ↔ open crossfade
-        eyesOpen.forEach(m=>m.material.opacity=0.95*(1-ec));
-        eyesClosed.forEach(m=>m.material.opacity=ec); }
       renderer.render(scene,camera);
       requestAnimationFrame(loop);
     })(0);
