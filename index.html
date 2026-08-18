@@ -764,6 +764,18 @@ function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) rin
   const cv=document.getElementById("robot3d"), stage=document.getElementById("robotStage");
   if(!cv||!stage) return;
   const SCENE="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode";
+  // meditation pose deltas (radians) — shared by the Spline and GLB renderers;
+  // tuned empirically on the GLB rig (same skeleton the Spline scene uses)
+  const MEDPOSE=window.__POSE={
+    femur:{x: 1.30, ys: 0.85, zs: 0.55},   // thighs lift, turn out, cross
+    shin:{x: 1.60, ys:0, zs:0},            // shins fold under
+    arm:{x: 0.35, ys:0, zs: 0.45},         // upper arms relax forward-in
+    elbow:{x:-1.15, ys: 0.35, zs:0},       // forearms to the lap, palms open
+    forearm:{x:0, ys:0, zs:0},
+    top:{x: 0.06, ys:0, zs:0},             // slight contemplative lean
+    lift:0.07,   // levitation height (GLB: fraction of height; Spline: scene units ×600)
+    bob:0.018
+  };
   import("https://esm.sh/@splinetool/runtime").then(m=>{
     const App=m.Application;
     if(!App) return glbBot();
@@ -771,9 +783,43 @@ function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) rin
     let app;
     try{ app=new App(cv); }catch(e){ cv.classList.remove("on"); return glbBot(); }
     app.load(SCENE)
-      .then(()=>{ stage.classList.add("has3d"); })
+      .then(()=>{ stage.classList.add("has3d"); try{ splineMonk(app); }catch(e){} })
       .catch(()=>{ cv.classList.remove("on"); glbBot(); });
   }).catch(glbBot);
+
+  // Spline-path meditation: pose the same joints via the runtime's object proxies.
+  // Fully defensive — if the scene's node names don't match, the robot just keeps standing.
+  function splineMonk(app){
+    if(!app.getAllObjects) return;
+    const all=app.getAllObjects();
+    const grab=n=>all.filter(o=>{ const nm=(o.name||"").trim(); return nm===n||nm.replace(/\s+/g,"_")===n.replace(/\s+/g,"_"); });
+    const wrap=o=>({o, rest:{x:o.rotation.x, y:o.rotation.y, z:o.rotation.z}, s:(o.position.x>=0?1:-1)});
+    const rig={ femur:grab("femur").map(wrap), shin:grab("shin").map(wrap),
+                arm:grab("arm").map(wrap), elbow:grab("elbow").map(wrap),
+                top:grab("Top part").map(wrap) };
+    if(!rig.femur.length) return;   // scene doesn't expose the skeleton — skip gracefully
+    const bot=grab("Bot")[0]||null, botRestY=bot?bot.position.y:0;
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let pT=0;
+    (function sLoop(t){
+      const el=document.getElementById("robot3d");
+      if(!el || el.tagName!=="CANVAS" ) return;          // canvas swapped out → stop
+      pT += (((robotBusy&&!reduce)?1:0)-pT)*0.055;
+      const e=pT*pT*(3-2*pT);
+      try{
+        for(const k of ["femur","shin","arm","elbow","top"]){
+          const d=MEDPOSE[k];
+          rig[k].forEach(j=>{
+            j.o.rotation.x=j.rest.x + d.x*e;
+            j.o.rotation.y=j.rest.y + (d.ys||0)*j.s*e;
+            j.o.rotation.z=j.rest.z + (d.zs||0)*j.s*e;
+          });
+        }
+        if(bot) bot.position.y = botRestY + MEDPOSE.lift*600*e + (e>0?Math.sin(t*0.0021)*MEDPOSE.bob*600*e:0);
+      }catch(err){ return; } // proxies went stale → stop posing, scene stays alive
+      requestAnimationFrame(sLoop);
+    })(0);
+  }
 
 /* ---------- fallback: robot.glb with Three.js. The GLB (a Spline mesh export) ships with
    NO materials, so we dress it here — glossy carbon-black PBR body, dark-glass visor,
@@ -821,7 +867,7 @@ function glbBot(){
     const matGlass=new THREE.MeshPhysicalMaterial({color:0x05070a, metalness:0.9, roughness:0.06,
       clearcoat:1, clearcoatRoughness:0.04, envMapIntensity:2.0});
 
-    let head=null, model=null;
+    let head=null, model=null, rig=null, baseY=0, modelH=1;
     new GL.GLTFLoader().load("robot.glb", gltf=>{
       model=gltf.scene;
       // strip the lights/cameras baked into the export — we light it ourselves
@@ -843,9 +889,48 @@ function glbBot(){
       const dist=(size.y/2)/Math.tan(camera.fov*Math.PI/360)*1.16;
       camera.position.set(0, size.y*0.02, dist);
       camera.lookAt(0,0,0);
+      baseY=model.position.y; modelH=size.y;
+      try{ rig=collectRig(model); }catch(e){ rig=null; try{console.error("rig:",e);}catch(_){} }
       cv.classList.add("on");
       stage.classList.add("has3d"); // real robot is up → drop the SVG fallback
-    }, undefined, ()=>{ /* load failed → SVG fallback stays */ });
+    }, undefined, err=>{ try{console.error("GLB load failed:", err&&err.message||err);}catch(_){} });
+
+    // ---- meditation rig: gather the articulated joints, remember their rest pose,
+    // and note each limb's side (by world x) so the lotus mirrors correctly ----
+    function collectRig(root){
+      root.updateMatrixWorld(true);
+      // GLTFLoader sanitizes node names (spaces → underscores) and suffixes duplicates
+      // with _1, _2 … — match both, or half the limbs are missed
+      const grab=(name)=>{ const rx=new RegExp("^"+name.replace(/\s+/g,"_")+"(_\\d+)?$");
+        const out=[]; root.traverse(o=>{ if(rx.test(o.name)) out.push(o); }); return out; };
+      const side=o=>{ const v=new THREE.Vector3(); o.getWorldPosition(v); return v.x>=0?1:-1; };
+      const wrap=o=>({o, rest:o.rotation.clone(), s:side(o)});
+      return window.__rig={
+        femur:grab("femur").map(wrap),
+        shin:grab("shin").map(wrap),
+        arm:grab("arm").map(wrap),
+        elbow:grab("elbow").map(wrap),
+        forearm:grab("forearm").map(wrap),
+        top:grab("Top part").map(wrap)
+      };
+    }
+    // pose deltas — shared MEDPOSE from the outer scope; s mirrors left/right joints
+    const POSE=MEDPOSE;
+    window.__setPose=v=>{ poseT=Math.max(0,Math.min(1,v)); };
+    function applyPose(p, t){
+      if(!rig) return;
+      const e=p*p*(3-2*p); // smoothstep
+      for(const k of ["femur","shin","arm","elbow","forearm","top"]){
+        const d=POSE[k];
+        rig[k].forEach(j=>{
+          j.o.rotation.x=j.rest.x + d.x*e;
+          j.o.rotation.y=j.rest.y + (d.ys||0)*j.s*e;
+          j.o.rotation.z=j.rest.z + (d.zs||0)*j.s*e;
+        });
+      }
+      model.position.y = baseY + modelH*POSE.lift*e + (e>0 ? Math.sin(t*0.0021)*modelH*POSE.bob*e : 0);
+      model.rotation.y = Math.sin(t*0.0009)*0.07*e; // slow serene sway while levitating
+    }
 
     // size the render to the stage
     function resize(){
@@ -862,16 +947,22 @@ function glbBot(){
       nx=Math.max(-1,Math.min(1,(e.clientX/innerWidth -0.5)*2));
       ny=Math.max(-1,Math.min(1,(e.clientY/innerHeight-0.5)*2));
     }, {passive:true});
-    (function loop(){
+    let poseT=0;
+    (function loop(t){
+      const meditating = robotBusy && !reduce;
       if(head){
-        const gy=(reduce||robotBusy)?0:nx*0.52;   // yaw toward the cursor
-        const gx=(reduce||robotBusy)?0:ny*0.28;   // slight nod up/down
+        // idle: head tracks the cursor; auditing: a gentle meditative bow instead
+        const gy=(reduce||robotBusy)?0:nx*0.52;
+        const gx=(reduce||robotBusy)?(meditating?0.22:0):ny*0.28;
         head.rotation.y+=(gy-head.rotation.y)*0.10;
         head.rotation.x+=(gx-head.rotation.x)*0.10;
       }
+      poseT += ((meditating?1:0)-poseT)*0.055;    // ease into / out of the lotus
+      if(model && rig && poseT>0.001) applyPose(poseT, t||0);
+      else if(model && rig && poseT<=0.001 && model.rotation.y!==0) applyPose(0, t||0);
       renderer.render(scene,camera);
       requestAnimationFrame(loop);
-    })();
+    })(0);
   }).catch(()=>{ /* CDN unavailable → SVG fallback stays */ });
 }
 })();
