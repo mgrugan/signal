@@ -776,7 +776,7 @@ function botProgress(frac){ // 0..1, or null for an indeterminate (spinning) rin
     lift:0.07,   // levitation height (GLB: fraction of height; Spline: scene units ×600)
     bob:0.018
   };
-  import("https://esm.sh/@splinetool/runtime").then(m=>{
+  import("https://esm.sh/@splinetool/runtime@1.12.98") /* pinned: every 2.x crashes loading this scene */.then(m=>{
     const App=m.Application;
     if(!App) return glbBot();
     cv.classList.add("on");
